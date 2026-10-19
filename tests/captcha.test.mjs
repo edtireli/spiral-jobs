@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {Navigator} from '../lib/navigator.mjs';
-import {captureCaptcha,validCaptchaAction} from '../lib/captcha.mjs';
+import {captureCaptcha,validCaptchaAction,captchaDecision,captchaSchema} from '../lib/captcha.mjs';
 import {ExecutionControl} from '../lib/execution-control.mjs';
 
 const challenge=`<style>body{margin:0;padding:10px}canvas{display:block}button{margin:10px}</style><p>Drag the square to its outline.</p><canvas width=480 height=300></canvas><button id=verify>Verify</button><script>
@@ -21,6 +21,12 @@ test('CAPTCHA decisions are bounded to observed puzzle surfaces and known verify
  const scene={surfaces:[{target:'s0',x:10,y:10,width:700,height:700}],buttons:[{target:'b0',label:'Verify'}]};
  assert.equal(validCaptchaAction({action:'drag',target:'s0',from:{x:100,y:100},to:{x:500,y:500},reason:'Matching shape'},scene),true);
  for(const a of [{action:'click',target:'application-submit',from:{x:100,y:100}},{action:'drag',target:'s0',from:{x:100,y:100},to:{x:900,y:500}},{action:'verify',target:'application-submit'},{action:'click',target:'s0',from:{x:NaN,y:100}}])assert.equal(validCaptchaAction({...a,reason:'Unsupported'},scene),false);
+});
+test('drag schema requires its target and exact repair feedback fixes missing target without browser actions',async()=>{
+ const scene={surfaces:[{target:'s0',kind:'image',x:10,y:10,width:700,height:700}],buttons:[]},drag={action:'drag',from:{x:100,y:100},to:{x:500,y:500},reason:'One object matches this outline.'},calls=[];
+ const schema=captchaSchema(scene);assert.deepEqual(schema.oneOf.find(b=>b.properties.action.enum[0]==='drag').required,['action','target','reason','from','to']);
+ const result=await captchaDecision({model:'fixture',shot:Buffer.from('fixture'),scene,info:{capabilities:['vision']},chat:async body=>{calls.push(body);return {message:{content:JSON.stringify(calls.length===1?drag:{...drag,target:'s0'})}};}});
+ assert.equal(result.target,'s0');assert.equal(calls.length,2);assert.match(calls[1].messages.at(-1).content,/Missing required target/);assert.match(calls[1].messages.at(-1).content,/No browser action occurred/);
 });
 test('one explicitly confirmed drag and Verify preserves the original submission without replaying Submit',{timeout:30000},async t=>{
  let calls=0;const {n,events}=await fixture(t,async({scene})=>++calls===1?{action:'drag',target:'s0',from:point(scene.surfaces[0],.1,.2),to:point(scene.surfaces[0],.7,.6),reason:'Square matches its outline'}:{action:'verify',target:scene.buttons[0].target,reason:'The puzzle has been arranged'});
@@ -58,4 +64,26 @@ test('CAPTCHA Verify may navigate to a receipt without another application actio
  let calls=0;const {n,events}=await fixture(t,async({scene})=>{calls++;return {action:'verify',target:scene.buttons[0].target,reason:'Fixture arranged'};});
  await n.page.frames()[1].evaluate(()=>document.querySelector('button').onclick=()=>{parent.history.pushState({},'', '/receipt');parent.document.querySelector('p').textContent='Thank you for your application';parent.document.querySelector('iframe').remove();});
  const result=await n.attemptCaptcha({sequence:n.state.sequence,confirm:true});assert.equal(result.resolved,true);assert.match(n.page.url(),/\/receipt$/);assert.equal(calls,1);assert.equal(events.filter(e=>e.action==='captcha_action').length,1);assert.equal(await n.page.evaluate(()=>submits),0);assert.equal(n.finalClicked,true);
+});
+test('drag holds the mouse button through object movement and observed slider tracks',{timeout:30000},async t=>{
+ for(const kind of ['image','slider'])await t.test(kind,async t=>{
+  let active;const {n}=await fixture(t,async({scene})=>await active.page.evaluate(()=>pointerEvents.some(e=>e.type==='pointerup'))?{action:'stop',target:'',reason:'Fixture complete.'}:{action:'drag',target:'s0',from:point(scene.surfaces[0],kind==='slider'?.025:.1,.5),to:point(scene.surfaces[0],.8,.5),reason:'Move one object to the indicated position.'});active=n;
+  await n.page.frames()[1].evaluate(kind=>{let e=document.querySelector('canvas');if(kind==='slider'){const input=document.createElement('input');input.type='range';input.min='0';input.max='100';input.value='0';input.style='display:block;width:480px;height:40px;margin:0';e.replaceWith(input);e=input;}parent.pointerEvents=[];for(const type of ['pointerdown','pointermove','pointerup'])e.addEventListener(type,event=>parent.pointerEvents.push({type,buttons:event.buttons,time:performance.now()}));},kind);
+  const result=await n.attemptCaptcha({sequence:n.state.sequence,confirm:true});assert.equal(result.resolved,false);
+  const events=await n.page.evaluate(()=>pointerEvents),down=events.find(e=>e.type==='pointerdown'),up=events.find(e=>e.type==='pointerup');assert.ok(down&&up,JSON.stringify({result,events}));const held=events.filter(e=>e.type==='pointermove'&&e.time>down.time&&e.time<up.time);
+  assert.equal(down.buttons,1);assert.equal(up.buttons,0);assert.ok(held.length>=15);assert.ok(held.every(e=>e.buttons===1));assert.ok(held[0].time-down.time>=100);assert.ok(up.time-down.time>=500);
+  const captured=await captureCaptcha(n.page,{allowTest:true}),destination=point(captured.scene.surfaces[0],.8,.5);assert.ok(Math.abs(n.cursor.x-(captured.box.x+destination.x/1000*captured.box.width))<1);assert.ok(Math.abs(n.cursor.y-(captured.box.y+destination.y/1000*captured.box.height))<1);
+  if(kind==='slider')assert.ok(Number(await n.page.frames()[1].locator('input[type=range]').inputValue())>=70);
+  assert.equal(await n.page.evaluate(()=>submits+verifies),0);
+ });
+});
+test('Stop during a held drag releases the mouse without verification or application submission',{timeout:30000},async t=>{
+ const {n,control}=await fixture(t,async({scene})=>({action:'drag',target:'s0',from:point(scene.surfaces[0],.1,.2),to:point(scene.surfaces[0],.8,.6),reason:'One object to one outline.'}));
+ await n.page.frames()[1].evaluate(()=>{const e=document.querySelector('canvas');e.onpointerdown=()=>{parent.dragStarted=true;parent.pressed=true;};e.onpointerup=()=>{parent.pressed=false;parent.released=true;};});
+ const running=n.attemptCaptcha({sequence:n.state.sequence,confirm:true});await n.page.waitForFunction(()=>window.dragStarted);control.cancel();await running;
+ assert.equal(await n.page.evaluate(()=>pressed),false);assert.equal(await n.page.evaluate(()=>released),true);assert.equal(await n.page.evaluate(()=>submits+verifies),0);
+});
+test('invalid CAPTCHA model output never suggests rebuilding an exposed application',{timeout:30000},async t=>{
+ const {n,events}=await fixture(t,async()=>{throw new Error('The local model could not produce a valid result after formatting. No browser action was taken. Retry preparation or resume when ready.');});
+ const result=await n.attemptCaptcha({sequence:n.state.sequence,confirm:true});assert.match(result.reason,/valid CAPTCHA action.*original application is still open/);assert.doesNotMatch(result.reason,/Retry preparation/);assert.ok(events.some(e=>e.action==='captcha_decision_failed'));assert.equal(await n.page.evaluate(()=>submits+verifies+moves),0);
 });
