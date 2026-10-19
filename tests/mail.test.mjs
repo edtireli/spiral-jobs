@@ -42,3 +42,9 @@ test('companion is token scoped, accepts only the pending lookup and is revoked 
  bridge.complete({id:request.id,account:policy.recipient,messages:[message]});const r=await promise;assert.equal(r.messages[0].searchedRecipient,policy.recipient);
  bridge.connect(connection.origin);assert.equal(bridge.authorized('Bearer '+connection.token),false);
 });
+
+test('official Greenhouse regional mail domains are searched and validated',()=>{
+ assert.match(policy.query,/from:\(greenhouse-mail\.io\)/);
+ for(const sender of ['no-reply@us.greenhouse-mail.io','no-reply@eu.greenhouse-mail.io'])assert.equal(verifiedCode([{...message,sender}],policy,clock)?.code,'A2B3C4D5');
+ assert.equal(verifiedCode([{...message,sender:'no-reply@us.greenhouse-mail.io.attacker.test'}],policy,clock),null);
+});

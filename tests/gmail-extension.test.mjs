@@ -13,7 +13,7 @@ test('real Chrome extension reads only a requested fixture email through its iso
  t.after(async()=>{await context.close();await app.service.mailbox.close();await app.service.running;await new Promise(r=>app.server.close(r));app.service.store.close();await rm(dir,{recursive:true,force:true});});
  let gmailReads=0;const recipient='fixture@example.test',code='12345678',date=new Date().toISOString();
  const message=`<h2 class=hP>Greenhouse security code</h2><div data-message-id=fixture><span class=gD email=no-reply@greenhouse.io></span><span class=g3 title="${date}"></span><div class=a3s>Your security code is: ${code}</div></div>`;
- await context.route('https://mail.google.com/**',route=>{gmailReads++;return route.fulfill({contentType:'text/html',body:`<title>Search results - ${recipient} - Gmail</title><input name=q><main role=main><table><tr role=row><td>Security code</td></tr></table></main><script>document.querySelector('input').value=decodeURIComponent(location.hash.slice('#search/'.length));document.querySelector('tr').onclick=()=>document.querySelector('main').innerHTML=${JSON.stringify(message)}</script>`});});
+ await context.route('https://mail.google.com/**',route=>{gmailReads++;return route.fulfill({contentType:'text/html',body:`<title>Search results - ${recipient} - Gmail</title><input name=q><main role=main><table><tr role=row><td>Security code</td></tr></table></main><script>document.querySelector('input').value=decodeURIComponent(location.hash.slice('#search/'.length))+' ';location.hash=location.hash.replaceAll('%20','+');document.querySelector('tr').onclick=()=>document.querySelector('main').innerHTML=${JSON.stringify(message)}</script>`});});
  const worker=context.serviceWorkers()[0]||await context.waitForEvent('serviceworker');
  const extensionId=new URL(worker.url()).host;const page=await context.newPage();await page.goto(`chrome-extension://${extensionId}/connector.html`);
  // Chrome-created tabs can navigate before Playwright installs interception.
@@ -28,4 +28,10 @@ test('real Chrome extension reads only a requested fixture email through its iso
  const result=await app.service.mailbox.lookup({job:{company:'Fixture Research',url:'https://job-boards.greenhouse.io/fixture/jobs/1'},recipient,since:date,challengeBound:true});
  assert.equal(result?.code,code,JSON.stringify(app.service.mailbox.state)+' / '+await page.locator('#status').innerText());assert.equal(gmailReads,1);assert.equal(context.pages().some(p=>p.url().startsWith('https://mail.google.com')),false,'lookup tab closes, ordinary tabs remain');
  assert.equal(app.service.mailbox.bridge.pending,null);
+ // Gmail's empty results view can omit role=main. A scoped, loaded empty
+ // search must report no receipt, rather than a misleading sign-in error.
+ await context.unroute('https://mail.google.com/**');
+ await context.route('https://mail.google.com/**',route=>route.fulfill({contentType:'text/html',body:`<title>Search results - ${recipient} - Gmail</title><input name=q><p>No messages matched your search.</p><script>document.querySelector('input').value=decodeURIComponent(location.hash.slice('#search/'.length))+' ';location.hash=location.hash.replaceAll('%20','+');</script>`}));
+ const receipt=await app.service.mailbox.receipt({job:{company:'Fixture Research',title:'Data Scientist',url:'https://job-boards.greenhouse.io/fixture/jobs/1'},recipient,since:date});
+ assert.equal(receipt,null);assert.equal(app.service.mailbox.bridge.pending,null);
 });

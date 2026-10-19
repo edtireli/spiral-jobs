@@ -49,7 +49,7 @@ export async function start({port=Number(process.env.JOB_DESK_PORT||4317),dataDi
     if(p==='/api/models/start')return json(res,runtime.start());
     if(p==='/api/models/cancel')return json(res,runtime.cancel());
     if(p==='/api/autonomy')return json(res,await service.setAutonomy(body.enabled));
-    if(p==='/api/autonomy/run')return json(res,await service.autoRun({search:body.search===true}));
+    if(p==='/api/autonomy/run')return json(res,await service.autoRun({search:body.search===true,mode:body.mode}));
     if(p==='/api/control/pause')return json(res,service.pauseExecution(body));
     if(p==='/api/control/resume')return json(res,service.resumeExecution(body));
     if(p==='/api/autonomy/stop')return json(res,await service.stopAutonomy());
@@ -62,7 +62,7 @@ export async function start({port=Number(process.env.JOB_DESK_PORT||4317),dataDi
     const [,jid,action]=m;
     if(action==='check-application-email')return json(res,await service.checkApplicationEmail(jid));
     if(action==='check-verification')return json(res,await service.checkVerification(jid));
-    if(action==='auto-apply')return json(res,await service.autoApply(jid));
+    if(action==='auto-apply')return json(res,await service.autoApply(jid,body.mode));
     if(action==='prepare')return json(res,await service.explore(jid,{prepare:true}));
     if(action==='inspect')return json(res,await service.explore(jid));
     if(action==='draft')return json(res,await service.draft(jid,body.includeLetter));

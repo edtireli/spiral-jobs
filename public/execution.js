@@ -17,7 +17,7 @@ export function renderExecution(control){
  document.body.dataset.aiControl=view.visible?view.status:'idle';
  $('#aiControlBar').hidden=!view.visible;
  if(!view.visible)return;
- $('#aiControlTitle').textContent=view.title;$('#aiControlActivity').textContent=view.detail;
+ $('#aiControlTitle').textContent=view.title;$('#aiControlMode').textContent={review:'Review each step',final:'Approve before submitting',full:'Full auto'}[control.approvalMode]||'Review each step';$('#aiControlActivity').textContent=view.detail;
  $('#aiControlActivity').title=view.detail;
  const button=$('#pauseAI');button.textContent=view.button;button.disabled=view.disabled;button.dataset.action=view.action;
 }

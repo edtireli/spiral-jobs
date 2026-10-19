@@ -51,7 +51,7 @@ test('Find jobs only collects; Auto apply follows the current job live without e
  const errors=[];b.page.on('pageerror',e=>errors.push(e.message));await b.page.goto(`http://127.0.0.1:${server.address().port}`);
  await b.page.waitForFunction(()=>document.querySelector('#autoApplyButton')?.textContent.includes('2'));
  await Promise.all([b.page.waitForResponse(r=>r.url().endsWith('/api/scan')),b.page.locator('#scanButton').click()]);assert.deepEqual(posts,['/api/scan']);
- await b.page.locator('#autoApplyButton').click();await b.page.waitForFunction(()=>document.querySelector('#liveMessage')?.textContent==='Working on a');
+ await b.page.locator('#autoApplyButton').click();assert.equal(await b.page.locator('#applyMode').isVisible(),true);assert.deepEqual(posts,['/api/scan']);await b.page.locator('input[name=mode][value=full]').check();await b.page.locator('#startApplyMode').click();await b.page.waitForFunction(()=>document.querySelector('#liveMessage')?.textContent==='Working on a');
  assert.deepEqual(posts,['/api/scan','/api/autonomy/run']);assert.equal(await b.page.locator('#stopAutoButton').isVisible(),true);assert.equal(await b.page.locator('#approve').isVisible(),false);
  active='b';await b.page.waitForFunction(()=>document.querySelector('#liveMessage')?.textContent==='Working on b');assert.equal(await b.page.locator('.detail-top h2').textContent(),'Role b');assert.deepEqual(errors,[]);
 });

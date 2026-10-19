@@ -203,3 +203,21 @@ test('changed attachments during a final pause invalidate sending',async t=>{
  await writeFile(f.service.session(j.id).artifacts.cv,'changed while paused');await f.post('/api/control/resume',{runId:f.service.busy.id});await f.service.running;
  assert.equal(f.posts.length,0);assert.match(f.service.store.get(j.id).automatic.reason,/attachment changed/);
 });
+
+test('review mode prepares only; final approval mode fills but never sends until explicit approval',async t=>{
+ const f=await fixture(t,()=>basic),j=f.add('Approval Modes Fixture');
+ assert.equal((await f.post(`/api/jobs/${j.id}/auto-apply`,{mode:'review'})).status,200);await f.service.running;
+ let saved=f.service.store.get(j.id);assert.equal(saved.navigation.status,'review');assert.equal(saved.navigation.approvalMode,'review');assert.equal(f.service.session(j.id).exposed,false);assert.equal(f.posts.length,0);
+ assert.equal((await f.post(`/api/jobs/${j.id}/auto-apply`,{mode:'final'})).status,200);await f.service.running;
+ saved=f.service.store.get(j.id);assert.equal(saved.navigation.status,'final_review',saved.error||saved.navigation.message);assert.equal(saved.navigation.approvalMode,'final');assert.ok(!f.service.session(j.id).closed);assert.equal(f.posts.length,0);
+ await f.service.setAutonomy(true);assert.equal(f.posts.length,0,'changing the global full-auto switch does not submit a held application');
+ assert.equal((await f.post(`/api/jobs/${j.id}/auto-apply`,{mode:'full'})).status,409,'cannot replay an exposed application');
+ assert.equal((await f.post(`/api/jobs/${j.id}/approve-final`,{confirm:true,key:saved.navigation.finalReview.key})).status,200);await f.service.running;
+ assert.equal(f.posts.length,1);assert.equal(f.service.store.get(j.id).stage,'submitted');
+});
+
+test('final approval mode keeps the first browser open and does not move on to another job',async t=>{
+ const f=await fixture(t,()=>basic),first=f.add('First Approval'),second=f.add('Second Approval','/second');
+ await f.service.autoRun({mode:'final'});await f.service.running;
+ assert.equal(f.service.store.get(first.id).navigation.status,'final_review');assert.equal(f.service.store.get(second.id).navigation,undefined);assert.equal(f.posts.length,0);assert.ok(!f.service.session(first.id).closed);
+});

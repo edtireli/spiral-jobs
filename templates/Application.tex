@@ -1,23 +1,34 @@
 \documentclass[11pt,a4paper]{article}
-\usepackage[a4paper,margin=24mm]{geometry}
-\usepackage{fontspec}\setsansfont{lmsans10-regular.otf}[BoldFont=lmsans10-bold.otf,ItalicFont=lmsans10-oblique.otf,BoldItalicFont=lmsans10-boldoblique.otf]\usepackage{parskip}\usepackage{xcolor}\usepackage{tikz}\usepackage{eso-pic}\usepackage{hyperref}
+\usepackage[a4paper,margin=24mm,footskip=12mm]{geometry}
+\usepackage{fontspec}\setsansfont{lmsans10-regular.otf}[BoldFont=lmsans10-bold.otf,ItalicFont=lmsans10-oblique.otf,BoldItalicFont=lmsans10-boldoblique.otf]
+\usepackage{parskip}\usepackage{xcolor}\usepackage{tikz}\usepackage{eso-pic}\usepackage{hyperref}\usepackage{fancyhdr}
 \renewcommand{\familydefault}{\sfdefault}
-\definecolor{paper}{HTML}{080808}\definecolor{ink}{HTML}{F2F2F2}\definecolor{muted}{HTML}{AAAAAA}
-\pagecolor{paper}\color{ink}\hypersetup{colorlinks=true,urlcolor=ink,pdfauthor={Alex Jensen},pdftitle={Application}}
-\setlength{\emergencystretch}{3em}\setlength{\parskip}{8pt}\pagestyle{empty}
-\AddToShipoutPictureBG{\begin{tikzpicture}[remember picture,overlay]\foreach \r in {1,...,12}{\draw[ink!4!paper,line width=.3pt] ([xshift=-10mm,yshift=-10mm]current page.north east) circle (\r*8mm);}\end{tikzpicture}}
+\definecolor{paper}{HTML}{000000}\definecolor{ink}{HTML}{EEEEEE}\definecolor{muted}{HTML}{ADADAD}
+\pagecolor{paper}\color{ink}\hypersetup{colorlinks=true,urlcolor=ink,linkcolor=ink,pdfauthor={Edis Tireli},pdftitle={Application}}
+\urlstyle{same}\setlength{\emergencystretch}{3em}\setlength{\parskip}{7pt}\setlength{\parindent}{0pt}
+\pagestyle{fancy}\fancyhf{}\renewcommand{\headrulewidth}{0pt}\renewcommand{\footrulewidth}{0pt}
+\fancyfoot[L]{\scriptsize\ttfamily\color{muted}Edis Tireli / application}\fancyfoot[R]{\scriptsize\ttfamily\color{muted}\thepage}
+\AddToShipoutPictureBG{\begin{tikzpicture}[remember picture,overlay]
+\foreach \x in {0,...,7}{\foreach \y in {0,...,74}{
+\pgfmathsetmacro{\shade}{8+9*(1+sin(\x*29+\y*12))}
+\fill[ink!\shade!paper] ([xshift=\x*2.4mm+2mm,yshift=-\y*4mm]current page.north west) circle (.16mm);
+\fill[ink!\shade!paper] ([xshift=-\x*2.4mm-2mm,yshift=-\y*4mm]current page.north east) circle (.16mm);
+}}\end{tikzpicture}}
 \begin{document}
-{\fontsize{29}{32}\selectfont Alex Jensen}\par
-{\small\color{muted}alex.jensen@example.com | +45 00 00 00 00 | Copenhagen, Denmark}\par
-\vspace{2mm}\hrule\vspace{6mm}
-{\small\color{muted}APPLICATION}\par
+{\scriptsize\ttfamily\color{muted}spiral jobs / application}\par\vspace{6mm}
+{\fontsize{30}{34}\selectfont Edis Tireli}\par
+{\small\color{muted}PhD Computational Biology · MSc Applied Mathematics}\par
+
+\vspace{1mm}{\small\color{muted}Copenhagen, Denmark · alex.jensen@example.com · +45 00 00 00 00}\par
+
+\vspace{4mm}{\color{muted}\hrule}\vspace{6mm}
 {\Large AI Engineer}\par Nordsignal Research\par\vspace{7mm}
 Dear Nordsignal Research team,
 
 I would like to bring my research and Python development experience to your AI Engineer role. My work combines reproducible data pipelines with practical machine learning for scientific data.
 
 I am interested in building useful tools with clear evaluation, reliable behaviour and simple interfaces. I would welcome the opportunity to discuss how that experience could contribute to your team.
-\par\vspace{5mm}Kind regards,\\Alex Jensen
+\par\vspace{5mm}Kind regards,\\Edis Tireli
 
 \vfill\vspace{8mm}\noindent\colorbox{paper!88!ink}{\parbox{\dimexpr\linewidth-2\fboxsep\relax}{\small\color{muted}Prepared using Spiral Jobs, a local AI application pipeline. \href{https://github.com/edtireli/spiral-jobs}{Source \& demo}.}}
 \end{document}

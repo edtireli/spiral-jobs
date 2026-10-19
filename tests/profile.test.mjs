@@ -30,3 +30,11 @@ test('additional facts enter model evidence and survive a replacement CV without
  assert.equal(service.store.settings().profile.firstName,'Alex Jordan');assert.equal(service.store.settings().profile.lastName,'Jensen');
  await saveProfile(service,{extraFacts:''});assert.equal(service.store.settings().profile.facts.length,1);
 });
+
+test('Spiral restyles imported content and gives both documents the same credentials and theme',()=>{
+ const customCV='\\documentclass{article}\n\\begin{document}\n\\begin{center}Original header\\end{center}\nOriginal research evidence.\n\\end{document}';
+ const profile={name:'Fixture Person',credentials:'MSc Physics',documentTheme:'spiral',profile:'Python research.'};
+ const {cv,letter}=documentSources({customCV,profile,job:{title:'Engineer',company:'Fixture'},coverLetter:'Hello.'});
+ assert.match(cv,/Original research evidence/);assert.ok(!cv.includes('Original header'));
+ for(const source of [cv,letter]){assert.match(source,/MSc Physics/);assert.match(source,/\\definecolor\{paper\}\{HTML\}\{000000\}/);assert.match(source,/spiral jobs/);}
+});

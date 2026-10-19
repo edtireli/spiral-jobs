@@ -8,9 +8,9 @@
 
 A small macOS workspace for finding Denmark roles, preparing English documents from your actual CV, and navigating application websites with a local vision model. Watch the browser, pause when you need to, and keep a recording of each attempt.
 
-[Download for Mac](https://github.com/edtireli/spiral-jobs/releases/latest) · [Interactive demo](https://edtireli.github.io/spiral-jobs/) · [Watch the video](https://edtireli.github.io/spiral-jobs/demo.mp4)
+[Download for Mac](https://github.com/edtireli/spiral-jobs/releases/latest) · [Interactive demo](https://edtireli.github.io/spiral-jobs/)
 
-[![Fictional, scripted walkthrough of Spiral Jobs](docs/poster.png)](https://edtireli.github.io/spiral-jobs/)
+https://github.com/user-attachments/assets/e72989ad-ae6e-42ef-9114-d3f239a14661
 
 *The demonstration is a scripted simulation with fictional employers, Edis Tireli’s professional CV excerpt and placeholder contact details. It illustrates the workflow; it is not footage of an autonomous application or a model performance benchmark.*
 
@@ -21,7 +21,7 @@ A small macOS workspace for finding Denmark roles, preparing English documents f
 - **Prepare:** use the CV as evidence, make small profile changes, and write a short application letter when required. Compile editable LaTeX into PDFs.
 - **Navigate:** use screenshots plus observed page controls to plan clicks, fill fields, attach the right PDFs and advance through forms.
 - **Follow:** a red frame and **AI in control** badge show when automation owns the workflow. The red **AI** cursor points to the real browser targets, in the live view and recordings. Expand model output when you want more detail.
-- **Submit:** use separate filling and submission approvals, or explicitly enable Auto apply and start a run. **Pause AI** holds the current session; **Stop** ends it. Job collection alone never submits.
+- **Submit:** choose **Review each step**, **Approve before submitting**, or **Full auto** when starting an application. Review modes hold the same browser for approval; Full auto can submit without another prompt. **Pause AI** holds the current session; **Stop** ends it. Job collection alone never submits.
 - **Remember:** maintain one application per employer. Record position, location, postcode, address and deadline when listed. A submission without a receipt stays **uncertain** and blocks another attempt.
 
 Optional Gmail access looks only for verification messages relevant to the active application, through a companion extension in your regular Chrome profile. Optional tracked project links show visits privately in the app. Neither feature is required.

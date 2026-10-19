@@ -19,10 +19,11 @@ async function readMail(job){
    if(Date.now()>job.expiresAt)throw Error('Email lookup expired.');
    const tabState=await chrome.tabs.get(tab.id);
    if(!tabState.url?.startsWith('https://mail.google.com/')){if(tabState.url?.startsWith('https://accounts.google.com/'))throw Error('Sign in to Gmail in regular Chrome, then check again.');continue;}
-   try{page=await script(tab.id,query=>({queryMatch:document.querySelector('input[name=q]')?.value===query&&decodeURIComponent(location.hash.slice('#search/'.length))===query&&/search results|søgeresultater/i.test(document.title),title:document.title,main:!!document.querySelector('[role=main]'),rows:document.querySelectorAll('[role=main] tr[role=row]').length,empty:/No conversations|No results|Ingen samtaler|Ingen resultater/i.test(document.body.innerText)}),[job.query]);}catch{continue;}
-   if(page.queryMatch&&page.main&&matchesAccount(page.title,job.recipient)&&(page.rows||page.empty))break;
+   try{page=await script(tab.id,query=>({queryMatch:document.querySelector('input[name=q]')?.value.trim()===query.trim()&&decodeURIComponent(location.hash.slice('#search/'.length).replace(/\+/g,' ')).trim()===query.trim()&&/search results|søgeresultater/i.test(document.title),title:document.title,main:!!document.querySelector('[role=main]'),rows:document.querySelectorAll('[role=main] tr[role=row]').length,empty:/No conversations|No results|No messages matched|Ingen samtaler|Ingen resultater/i.test(document.body.innerText)}),[job.query]);}catch{continue;}
+   if(page.queryMatch&&(page.main||page.empty)&&matchesAccount(page.title,job.recipient)&&(page.rows||page.empty))break;
   }
-  if(!page?.queryMatch||!page?.main||!matchesAccount(page.title,job.recipient))throw Error('Sign in to the matching Gmail account in regular Chrome.');
+  if(!page?.queryMatch||!matchesAccount(page.title,job.recipient))throw Error('Gmail did not show the requested search in the matching account.');
+  if(!page.main&&!page.empty||!page.rows&&!page.empty)throw Error('Gmail search results did not finish loading. Check again.');
   if(page.rows>5)throw Error('Several matching conversations need review.');
   if(!page.rows)return {account:job.recipient,messages:[]};
   const messages=[];
