@@ -20,7 +20,7 @@ https://github.com/user-attachments/assets/4780a6d8-8639-4de4-96b4-1f714e0c8b7c
 - **Read:** scroll through listings and retain screenshots and text beyond the first viewport.
 - **Prepare:** use the CV as evidence, make small profile changes, and write a short application letter when required. Compile editable LaTeX into PDFs.
 - **Navigate:** use the standard application form, with screenshots and observed controls to plan clicks, fill fields and attach PDFs. Skip LinkedIn sign-in/import and optional LinkedIn links. Keep the same session for verification after Submit.
-- **Follow:** a red frame and **AI in control** badge show when automation owns the workflow. The red **AI** cursor points to the real browser targets, in the live view and recordings. Expand model output when you want more detail.
+- **Follow:** a red frame and **AI in control** badge show when automation owns the workflow. The red **AI** cursor moves smoothly to the real browser targets, in the live view and recordings. Expand model output when you want more detail.
 - **Submit:** choose **Review each step**, **Approve before submitting**, or **Full auto** when starting an application. Review modes hold the same browser for approval; Full auto can submit without another prompt. **Pause AI** holds the current session; **Stop** ends it. Job collection alone never submits.
 - **Verify:** after the final Submit control is activated, **Let AI handle this CAPTCHA** can make one bounded attempt on a supported visual challenge with your confirmation. It uses the original browser and checks for a receipt without clicking the application's Submit again. A new challenge needs new confirmation; Pause and Stop remain available.
 - **Remember:** maintain one application per employer. Record position, location, postcode, address and deadline when listed. A submission without a receipt stays **uncertain** and blocks another attempt.
@@ -43,6 +43,8 @@ The app starts its local server and Ollama when needed, discovers a free local p
 **Pause AI** is always visible while an application task is running. If a browser action, model request or compilation is already underway, the indicator says **Pausing…** until that step finishes. No subsequent fill, upload, navigation or submit action starts once the run reaches its pause point. **Resume AI** continues the same session and queue; it does not restart the application.
 
 Pausing cannot recall a request already sent to an employer. If the final submit click happened first, resuming only checks that submission's result. **Stop** closes the browser, keeps the recording, and preserves duplicate protection for exposed or uncertain attempts. A lost dashboard connection is shown explicitly; it does not mean the run is paused.
+
+After filling starts, additional tabs cannot replace the original application page. If that page closes before receipt is confirmed, the outcome becomes uncertain and duplicate protection remains in place.
 
 If a model decision fails validation, the app tries one correction before pausing. **Resume same browser** retries that decision in the open session, retaining filled fields and uploaded files. Full auto can then finish under its original authorization; Final approval still waits before submitting. Stop or disable automatic applications to end the session. A closed session cannot be restored by retrying.
 
