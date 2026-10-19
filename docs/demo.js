@@ -13,13 +13,25 @@ function modelState(label='Model idle',active=false){$('#thinkingTitle').textCon
 function beginAutoApply(){control(true);activity('Reading the role');field.setWorking(true);$('#auto').textContent='AI applying…';think('Read the full role, check the source CV and saved facts, then prepare only the changes this application needs.');}
 function idle(){archiveThought();modelState();}
 function think(text,onComplete){archiveThought();activeText=text;modelState('Thinking',true);let i=0;typeTimer=setInterval(()=>{if(paused)return;$('#thought').textContent=text.slice(0,i+=2);if(i>=text.length){clearInterval(typeTimer);if(onComplete)onComplete();else idle();}},28);}
-function openDocument(kind){show('#documentLayer');show('#cvPaper',kind!=='letter');show('#letterPaper',kind==='letter');$('#documentTitle').textContent=kind==='source'?'Source · Edis_Tireli_CV.pdf':kind==='cv'?'Generated · CV.pdf':'Generated · Application.pdf';$('#paperProfile').textContent=kind==='source'?'Experience in Python, biomedical data analysis, application development and AI.':'PhD in Neuroscience with experience in biomedical Python pipelines, neural networks and practical AI applications.';$('#cvCaption').textContent=kind==='source'?'Source document · professional CV excerpt · contacts omitted':'Generated output · profile tailored from the saved CV · qualifications preserved';}
-const latex=String.raw`\documentclass[11pt]{article}
-\usepackage{fontspec,geometry}
-\setmainfont{Latin Modern Sans}
-\geometry{margin=22mm}
+const documentCredit='Local open-weights AI workflow · built by Edis Tireli · source & demo.';
+function openDocument(kind){show('#documentLayer');show('#cvPaper',kind!=='letter');show('#letterPaper',kind==='letter');$('#cvPaper').classList.toggle('generated',kind==='cv');$('#cvPaper .paper-profile').textContent=kind==='source'?'PhD in Neuroscience · Theoretical & quantum physics':'PhD Neuroscience · MSc Theoretical Physics · BSc Quantum Physics';$('#documentTitle').textContent=kind==='source'?'Source · Edis_Tireli_CV.pdf':kind==='cv'?'Generated · CV.pdf':'Generated · Application.pdf';$('#paperProfile').textContent=kind==='source'?'Experience in Python, biomedical data analysis, application development and AI.':'PhD in Neuroscience with experience in biomedical Python pipelines, neural networks and practical AI applications.';const caption=$('#cvCaption');caption.replaceChildren();if(kind==='source')caption.textContent='Source document · professional CV excerpt · contacts omitted';else{const link=document.createElement('a');link.href='https://github.com/edtireli/spiral-jobs';link.textContent=documentCredit;caption.append(link);}}
+const latex=String.raw`\documentclass[11pt,a4paper]{article}
+\usepackage{fontspec,geometry,xcolor,tikz,eso-pic,hyperref}
+\setsansfont{TeX Gyre Heros}
+\renewcommand{\familydefault}{\sfdefault}
+\geometry{margin=24mm}
+\definecolor{paper}{HTML}{000000}
+\definecolor{ink}{HTML}{EEEEEE}
+\pagecolor{paper}\color{ink}
+% A subtle dot field behind the text, shared with the letter.
+\AddToShipoutPictureBG{\begin{tikzpicture}[remember picture,overlay]
+\foreach \x in {0,...,52}\foreach \y in {0,...,74}
+\fill[ink!8!paper] ([xshift=\x*4mm,yshift=-\y*4mm]
+current page.north west) circle (.13mm);
+\end{tikzpicture}}
 \begin{document}
-{\LARGE Edis Tireli}
+{\fontsize{34}{38}\selectfont\bfseries Edis Tireli}\par
+PhD Neuroscience · MSc Theoretical Physics · BSc Quantum Physics
 
 \section*{Profile}
 PhD in Neuroscience with experience in biomedical Python
@@ -29,13 +41,14 @@ pipelines, neural networks and practical AI applications.
 \textbf{p-Brain} — MRI pipelines, CNNs and quality control.
 \textbf{Spiral} — LLM agents, retrieval and evaluation.
 
-\section*{Education}
-PhD in Neuroscience · MSc and BSc in Physics
+\vfill
+\small\href{https://github.com/edtireli/spiral-jobs}{
+Local open-weights AI workflow · built by Edis Tireli · source \& demo.}
 \end{document}`;
 function prepareDocuments(){activity('Preparing documents');show('#employerBrowser',false);show('#generation');$('#surfaceLabel').textContent='Document workspace';$('#surfaceMeta').textContent='generated from your profile';$('#fileActivity').textContent='Source CV + saved facts';$('#codeStatus').textContent='planning…';
- think('Use a compact white layout that matches the source CV. Tailor only the profile; keep education and project facts unchanged. Give the short letter matching typography. Generate editable LaTeX, then compile both PDFs.',generate);
+ think('Use a dark dot field, bold name and clean sans typography for both outputs. Tailor the profile; preserve source facts. Include the workflow creator credit. Generate editable LaTeX, then compile both PDFs.',generate);
 }
-function generate(){archiveThought();modelState('Generating LaTeX',true);$('#codeStatus').textContent='generating locally…';$('#codeOutput').classList.add('typing');let i=0;codeTimer=setInterval(()=>{if(paused)return;$('#codeOutput').textContent=latex.slice(0,i+=8);$('#codeOutput').scrollTop=$('#codeOutput').scrollHeight;if(i>=latex.length){clearInterval(codeTimer);$('#codeOutput').classList.remove('typing');$('#codeStatus').textContent='compiling PDFs…';activity('Compiling PDFs');idle();activeDelay(600).then(current=>{if(!current)return;$('#codeOutput').scrollTop=0;$('#codeStatus').textContent='PDFs ready';show('#outputs');show('#letterFile');$('#fileActivity').textContent='✓ CV.tex → CV.pdf\n✓ Application.tex → Application.pdf';activity('Previewing documents');});}},30);}
+function generate(){archiveThought();modelState('Generating LaTeX',true);$('#codeStatus').textContent='generating locally…';$('#codeOutput').classList.add('typing');let i=0;codeTimer=setInterval(()=>{if(paused)return;$('#codeOutput').textContent=latex.slice(0,i+=12);$('#codeOutput').scrollTop=$('#codeOutput').scrollHeight;if(i>=latex.length){clearInterval(codeTimer);$('#codeOutput').classList.remove('typing');$('#codeStatus').textContent='compiling PDFs…';activity('Compiling PDFs');idle();activeDelay(600).then(current=>{if(!current)return;$('#codeOutput').scrollTop=0;$('#codeStatus').textContent='PDFs ready';show('#outputs');show('#letterFile');$('#fileActivity').textContent='✓ CV.tex → CV.pdf\n✓ Application.tex → Application.pdf';activity('Previewing documents');});}},30);}
 function employerForm(){activity('Filling the application');show('#generation',false);show('#employerBrowser');show('#listing',false);show('#application');$('#surfaceLabel').textContent='Employer website';$('#surfaceMeta').textContent='external';$('#url').textContent='careers.nordsignal.example/apply';think('Map name, email and city to saved facts; attach the two generated PDFs.');}
 $('#interests').onclick=$('#editInterests').onclick=()=>show('#interestLayer');$('#saveInterests').onclick=()=>show('#interestLayer',false);
 $('#profile').onclick=$('#sourceFacts').onclick=()=>show('#profileLayer');$('#saveProfile').onclick=()=>show('#profileLayer',false);
@@ -56,24 +69,26 @@ const actions=[
  [17.2,()=>{$('#matchStatus').textContent='Matches your experience';$('#jobStatus').textContent='matched';}],
  [17.5,prepareDocuments],
  [23,async()=>{while($('#outputs').hidden){if(!await activeDelay(50))return;}click('#previewCV',()=>openDocument('cv'));}],
- [25.5,()=>click('#closeDoc',()=>show('#documentLayer',false))],
- [26,()=>{activity('Opening the application');show('#generation',false);show('#employerBrowser');$('#surfaceLabel').textContent='Employer website';$('#surfaceMeta').textContent='external';}],
- [26.3,()=>click('#employerApply',employerForm)],
- [27.1,()=>click('#name',()=>{$('#name').textContent='Edis Tireli';})],
- [27.8,()=>click('#email',()=>{$('#email').textContent='demo@example.com';})],
- [28.5,()=>click('#city',()=>{$('#city').textContent='Copenhagen, Denmark';})],
- [29.5,()=>click('#cv',()=>{activity('Attaching documents');$('#cv').textContent='✓ CV.pdf';$('#cv').classList.add('done');})],
- [30.8,()=>click('#letter',()=>{$('#letter').textContent='✓ Application.pdf';$('#letter').classList.add('done');think('Required fields are complete. Both attachments are the generated outputs. No previous application to this employer.');})],
- [32.5,()=>click('#submit',()=>{$('#submit').textContent='Submitting…';activity('Submitting the application');idle();})],
- [34.3,()=>{show('#application',false);show('#verification');think('This employer requires an email code. Check the connected inbox for the matching application message.');}],
- [35.5,()=>click('#openInbox',()=>{show('#mailLayer');activity('Checking verification email');idle();})],
- [36.7,()=>click('#mailSearch',()=>{$('#mailSearch').textContent='Nordsignal Research · verification';})],
- [38.1,()=>click('#mailRow',()=>{show('#mailList',false);show('#mailMessage');})],
- [40,()=>click('#closeMail',()=>show('#mailLayer',false))],
- [40.8,()=>click('#verificationCode',()=>{activity('Verifying the application');$('#verificationCode').textContent='••••••';})],
- [41.8,()=>click('#verify',()=>{$('#verify').textContent='Verifying…';})],
- [43.7,()=>{show('#verification',false);show('#receipt');$('#jobStatus').textContent='applied';$('#applied').textContent='1';$('#auto').textContent='applied ✓';$('#matchStatus').textContent='Receipt saved';idle();field.setWorking(false);control(false);}],
- [46.5,()=>{$('#cursor').style.opacity=0;}]
+ [26,()=>click('#closeDoc',()=>show('#documentLayer',false))],
+ [26.5,()=>click('#previewLetter',()=>openDocument('letter'))],
+ [29,()=>click('#closeDoc',()=>show('#documentLayer',false))],
+ [29.5,()=>{activity('Opening the application');show('#generation',false);show('#employerBrowser');$('#surfaceLabel').textContent='Employer website';$('#surfaceMeta').textContent='external';}],
+ [30,()=>click('#employerApply',employerForm)],
+ [30.8,()=>click('#name',()=>{$('#name').textContent='Edis Tireli';})],
+ [31.5,()=>click('#email',()=>{$('#email').textContent='demo@example.com';})],
+ [32.2,()=>click('#city',()=>{$('#city').textContent='Copenhagen, Denmark';})],
+ [33.2,()=>click('#cv',()=>{activity('Attaching documents');$('#cv').textContent='✓ CV.pdf';$('#cv').classList.add('done');})],
+ [34.5,()=>click('#letter',()=>{$('#letter').textContent='✓ Application.pdf';$('#letter').classList.add('done');think('Required fields are complete. Both attachments are the generated outputs. No previous application to this employer.');})],
+ [36.2,()=>click('#submit',()=>{$('#submit').textContent='Submitting…';activity('Submitting the application');idle();})],
+ [38,()=>{show('#application',false);show('#verification');think('This employer requires an email code. Check the connected inbox for the matching application message.');}],
+ [39.2,()=>click('#openInbox',()=>{show('#mailLayer');activity('Checking verification email');idle();})],
+ [40.4,()=>click('#mailSearch',()=>{$('#mailSearch').textContent='Nordsignal Research · verification';})],
+ [41.8,()=>click('#mailRow',()=>{show('#mailList',false);show('#mailMessage');})],
+ [43.7,()=>click('#closeMail',()=>show('#mailLayer',false))],
+ [44.5,()=>click('#verificationCode',()=>{activity('Verifying the application');$('#verificationCode').textContent='••••••';})],
+ [45.5,()=>click('#verify',()=>{$('#verify').textContent='Verifying…';})],
+ [47.4,()=>{show('#verification',false);show('#receipt');$('#jobStatus').textContent='applied';$('#applied').textContent='1';$('#auto').textContent='applied ✓';$('#matchStatus').textContent='Receipt saved';idle();field.setWorking(false);control(false);}],
+ [50.2,()=>{$('#cursor').style.opacity=0;}]
 ];
 function reset(){run++;motion++;paused=false;activeText="";control(false);activity('');document.body.dataset.paused='false';$('#cursor').classList.remove('pressed');document.querySelectorAll('.demo-pressed').forEach(el=>el.classList.remove('demo-pressed'));$("#pause").textContent="pause";$("#modelSidebar").dataset.paused="false";clearInterval(typeTimer);clearInterval(codeTimer);started=performance.now();done.clear();for(const s of ['#jobs','#selected','#toast','#documentLayer','#interestLayer','#profileLayer','#mailLayer','#mailMessage','#letterFile','#application','#receipt','#verification','#generation','#outputs'])show(s,false);for(const s of ['#start','#noJobs','#listing','#employerBrowser','#mailList'])show(s);$('#find').textContent='find jobs ↗';$('#job').classList.remove('selected');$('#jobStatus').textContent='new match';$('#applied').textContent='0';$('#matchStatus').textContent='Ready to review';$('#auto').textContent='auto apply ↗';$('#scanInfo').textContent='Denmark · data & AI';$('#preferences').textContent='Denmark · data · AI · life sciences';$('#url').textContent='careers.nordsignal.example/ai-engineer';$('#surfaceLabel').textContent='Employer website';$('#surfaceMeta').textContent='external';$('#listing').style.transform='none';$('#thought').textContent='';$('#thoughtHistory').replaceChildren();$('#fileActivity').textContent='';$('#codeOutput').textContent='';$('#codeOutput').classList.remove('typing');$('#codeStatus').textContent='generating locally…';modelState();for(const s of ['#name','#email','#city','#verificationCode'])$(s).textContent='';for(const s of ['#cv','#letter']){$(s).textContent='Choose file';$(s).classList.remove('done');}$('#submit').textContent='Submit application ↗';$('#verify').textContent='Verify application ↗';$('#cursor').style.opacity=1;mouse={x:innerWidth*.78,y:innerHeight*.7};$('#cursor').style.transform=`translate(${mouse.x}px,${mouse.y}px)`;$('#mailSearch').textContent='Search mail';field.setWorking(false);modelState();}
 $('#play').onclick=reset;$('#pause').onclick=()=>{if(paused){started+=performance.now()-pausedAt;paused=false;}else{pausedAt=performance.now();paused=true;}$('#pause').textContent=paused?'resume':'pause';$('#modelSidebar').dataset.paused=String(paused);document.body.dataset.paused=String(paused);$('#controlTitle').textContent=paused?'AI paused':'AI in control';};

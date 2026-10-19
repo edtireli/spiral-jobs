@@ -36,5 +36,33 @@ test('Spiral restyles imported content and gives both documents the same credent
  const profile={name:'Fixture Person',credentials:'MSc Physics',documentTheme:'spiral',profile:'Python research.'};
  const {cv,letter}=documentSources({customCV,profile,job:{title:'Engineer',company:'Fixture'},coverLetter:'Hello.'});
  assert.match(cv,/Original research evidence/);assert.ok(!cv.includes('Original header'));
- for(const source of [cv,letter]){assert.match(source,/MSc Physics/);assert.match(source,/\\definecolor\{paper\}\{HTML\}\{000000\}/);assert.match(source,/spiral jobs/);}
+ for(const source of [cv,letter]){assert.match(source,/MSc Physics/);assert.match(source,/\\definecolor\{paper\}\{HTML\}\{000000\}/);assert.doesNotMatch(source,/spiral jobs/i);}
+});
+
+test('document labels and saved project footers omit the app brand while preserving factual content and the source link',()=>{
+ for(const projectFooterText of [undefined,'Prepared using Spiral Jobs, a local AI application pipeline.','Built and submitted with Spiral Jobs.']){
+  for(const customCV of [undefined,'\\documentclass{article}\n\\begin{document}\nOriginal research evidence.\n\\end{document}']){
+   const result=documentSources({customCV,profile:{name:'Fixture Person',documentTheme:'spiral',profile:'Original research evidence.',projectFooterText},job:{title:'Engineer',company:'Fixture'},coverLetter:'Hello.',projectLink:'https://github.com/edtireli/spiral-jobs'});
+   assert.match(result.cv,/Original research evidence/);
+   for(const source of [result.cv,result.letter]){
+    assert.doesNotMatch(source,/spiral jobs/i);
+    assert.match(source,/\\href\{https:\/\/github.com\/edtireli\/spiral-jobs\}\{Local open-weights AI workflow · built by Edis Tireli · source \\& demo\}/);
+    assert.doesNotMatch(source,/Prepared using|Source \\& demo|\\colorbox/);
+   }
+  }
+ }
+});
+
+test('generated prose can wrap slash-separated terms without modifying hyperlink targets or original CV content',()=>{
+ const profile={name:'Fixture Person',profile:'Research with web/arXiv/PubMed.',facts:[{id:'logging',text:'model-call/token/throughput logging.'}],github:'https://github.com/fixture/repo',documentTheme:'spiral'};
+ const input={profile,job:{title:'Engineer',company:'Fixture'},coverLetter:'Research with web/arXiv/PubMed and model-call/token/throughput logging.',projectLink:'https://example.com/r/fixture'};
+ const {cv,letter}=documentSources(input);
+ for(const source of [cv,letter]){
+  assert.ok(source.includes('web/\\allowbreak{}arXiv/\\allowbreak{}PubMed'));
+  assert.ok(source.includes('model-call/\\allowbreak{}token/\\allowbreak{}throughput'));
+  assert.ok(source.includes('\\href{https://example.com/r/fixture}'));
+  assert.ok(source.includes('\\href{https://github.com/fixture/repo}'));
+ }
+ const original='\\documentclass{article}\n\\begin{document}\nOriginal web/arXiv/PubMed content.\n\\end{document}';
+ assert.ok(documentSources({...input,customCV:original}).cv.includes('Original web/arXiv/PubMed content.'));
 });

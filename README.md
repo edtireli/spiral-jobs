@@ -10,7 +10,7 @@ A small macOS workspace for finding Denmark roles, preparing English documents f
 
 [Download for Mac](https://github.com/edtireli/spiral-jobs/releases/latest) · [Interactive demo](https://edtireli.github.io/spiral-jobs/)
 
-https://github.com/user-attachments/assets/e72989ad-ae6e-42ef-9114-d3f239a14661
+https://github.com/user-attachments/assets/4780a6d8-8639-4de4-96b4-1f714e0c8b7c
 
 *The demonstration is a scripted simulation with fictional employers, Edis Tireli’s professional CV excerpt and placeholder contact details. It illustrates the workflow; it is not footage of an autonomous application or a model performance benchmark.*
 
@@ -32,7 +32,7 @@ The downloadable build is for **Apple Silicon, macOS 14+**. It includes Node, Ch
 
 1. Download the release ZIP, extract it, and move **Spiral Jobs.app** into Applications.
 2. Open the app. In **Profile**, paste your real CV text and contact details. Add availability, languages or work authorization under **Additional facts**, one fact per line. These saved facts become evidence for application answers. Optionally select your existing standalone LaTeX CV.
-3. In **Settings → Get a model**, download a vision-capable Ollama model, or select models you already have. Choose a planning model and a navigation model; they can be the same.
+3. In **Settings → Get a model**, download a vision-capable Ollama model, or select models you already have. Choose a planning model and a vision model; they can be the same. The vision model reads listing screenshots and navigates forms; the planner matches your experience and checks answers.
 4. Choose your roles, topics and Denmark locations in **Interests**. Click **Find jobs**, choose a role, and prepare the application. Review documents and answers before your first live run.
 
 The app starts its local server and Ollama when needed, discovers a free local port, and reconnects to its own workspace. Data is stored in `~/Library/Application Support/Spiral Jobs/data`. Nothing in a fresh installation is prefilled with the author's personal information.
@@ -45,7 +45,7 @@ Pausing cannot recall a request already sent to an employer. If the final submit
 
 ### Bring your models
 
-The current backend uses the **local Ollama HTTP API**. Both model roles currently require vision support, because planning also reads listing screenshots. Select any compatible local model; there is no account or cloud inference requirement. A smaller model generally uses less memory; evaluate its decisions on your target sites before enabling automatic submission.
+The current backend uses the **local Ollama HTTP API**. Both model roles currently require vision support; the planner retains a screenshot fallback when a full listing capture is unavailable. Select any compatible local model; there is no account or cloud inference requirement. A smaller model generally uses less memory; evaluate its decisions on your target sites before enabling automatic submission.
 
 - [Ollama model library](https://ollama.com/library)
 - [Hugging Face GGUF models through Ollama](https://huggingface.co/docs/hub/en/ollama)

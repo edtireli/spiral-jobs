@@ -17,3 +17,15 @@ body[data-control="ai"] #modelSidebar .thinking-title i{background:#ed7c72}body[
 body[data-control="ai"][data-paused="true"] #aiFrame{opacity:.4}body[data-paused="true"] #controlActivity{display:none}body[data-paused="true"] .control-dot{box-shadow:none;opacity:.5}
 @media(max-width:1100px){#aiControl{top:76px}}@media(max-width:600px){#aiFrame{inset:3px;border-radius:8px}#aiControl{font-size:9px;padding:7px 10px}#controlActivity{font-size:8px}}
 @media(prefers-reduced-motion:reduce){#aiFrame,#cursor path{transition:none}.thinking-title i{animation:none!important}}
+
+/* The original CV remains a white external document; generated PDFs share the app design. */
+.paper.generated{background-color:#000;background-image:radial-gradient(ellipse at 25% 35%,#0007,transparent 65%),radial-gradient(circle,#ffffff18 .55px,transparent .8px);background-size:100% 100%,8px 8px;color:#eee;font-family:Arial,Helvetica,sans-serif}
+.paper.generated .paper-name{font-size:34px;line-height:1.1;font-weight:700;letter-spacing:-.7px}
+.paper.generated .paper-profile{font-size:9px;line-height:1.7;color:#adadad;margin:13px 0 21px}
+.paper.generated hr{border-color:#777}
+.paper.generated h4{font:10px ui-monospace,monospace;text-transform:none;letter-spacing:0;color:#adadad}
+.paper.generated .paper-role{font:700 19px/1.3 Arial,Helvetica,sans-serif;color:#eee;margin:25px 0 9px;letter-spacing:-.3px}
+.paper.generated .paper-company{font-size:10px;color:#adadad;margin-bottom:32px}
+.paper.generated .paper-bottom{border:0;color:#adadad;padding:0;font-size:9px;line-height:1.6}
+.paper.generated .paper-bottom a{color:inherit;text-decoration:none}
+@media(max-height:850px){.paper.generated .paper-name{font-size:31px}.paper.generated .paper-role{font-size:17px}.paper.generated .paper-company{margin-bottom:23px}}
