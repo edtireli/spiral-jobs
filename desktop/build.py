@@ -33,7 +33,7 @@ executable.parent.mkdir(parents=True)
 (resources / 'bin').mkdir(parents=True)
 app = resources / 'app'
 app.mkdir()
-for name in ('lib', 'public', 'resources'):
+for name in ('lib', 'public', 'resources', 'extensions'):
     shutil.copytree(root / name, app / name)
 for name in ('server.mjs', 'package.json', 'LICENSE'):
     shutil.copy2(root / name, app / name)

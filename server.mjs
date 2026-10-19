@@ -22,6 +22,18 @@ export async function start({port=Number(process.env.JOB_DESK_PORT||4317),dataDi
    res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
    res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'");
    const url=new URL(req.url,origin), p=url.pathname;
+   if(p.startsWith('/api/gmail/bridge/')){
+    const extensionOrigin=req.headers.origin;
+    assert(!extensionOrigin||/^chrome-extension:\/\/[a-p]{32}$/.test(extensionOrigin),'Gmail companion origin required.',403);
+    if(extensionOrigin){res.setHeader('Access-Control-Allow-Origin',extensionOrigin);res.setHeader('Vary','Origin');}
+    if(req.method==='OPTIONS'){res.setHeader('Access-Control-Allow-Methods','POST');res.setHeader('Access-Control-Allow-Headers','Authorization, Content-Type');res.writeHead(204);return res.end();}
+    assert(req.method==='POST'&&service.mailbox.bridge.authorized(req.headers.authorization),'Gmail connection expired.',403);
+    assert(req.headers['content-type']?.startsWith('application/json'),'JSON required.',415);
+    let raw='';for await(const chunk of req){raw+=chunk;assert(raw.length<240000,'Email result too large.',413);}const body=JSON.parse(raw||'{}');
+    if(p==='/api/gmail/bridge/poll'){const pending=service.mailbox.bridge.poll();await service.mailbox.check();return json(res,pending);}
+    if(p==='/api/gmail/bridge/result')return json(res,service.mailbox.bridge.complete(body));
+    throw Object.assign(new Error('Unknown companion action.'),{status:404});
+   }
    assert(!req.headers.origin||req.headers.origin===origin,'Cross-origin requests are not allowed.',403);
    if(req.method==='POST'){
     assert(req.headers.origin===origin,'A same-origin dashboard action is required.',403);
@@ -31,7 +43,7 @@ export async function start({port=Number(process.env.JOB_DESK_PORT||4317),dataDi
     if(p==='/api/profile')return json(res,await saveProfile(service,body));
     if(p==='/api/tracking')return json(res,await configureTracking(service,body));
     if(p==='/api/models/download')return json(res,runtime.download(body.model));
-    if(p==='/api/gmail/connect'){assert(body.confirm===true,'Confirm Gmail access.');return json(res,await service.mailbox.connect());}
+    if(p==='/api/gmail/connect'){assert(body.confirm===true,'Confirm Gmail access.');return json(res,{...await service.mailbox.connect(origin),extensionDirectory:path.join(root,'extensions/gmail')});}
     if(p==='/api/gmail/check')return json(res,await service.mailbox.check());
     if(p==='/api/gmail/disconnect')return json(res,await service.mailbox.disconnect());
     if(p==='/api/models/start')return json(res,runtime.start());
@@ -46,8 +58,9 @@ export async function start({port=Number(process.env.JOB_DESK_PORT||4317),dataDi
     if(p==='/api/jobs'){await publicURL(body.url);return json(res,service.add(body));}
     if(p==='/api/history')return json(res,service.history(body));
     if(p==='/api/settings')return json(res,service.settings(body));
-    const m=p.match(/^\/api\/jobs\/([\w-]+)\/(check-verification|auto-apply|prepare|inspect|draft|edit|approve-fill|resume-navigation|allow-interactive|answer-navigation|approve-final|stop-navigation|prepare-letter|approve-letter|archive|apply-url)$/);assert(m,'Unknown action.',404);
+    const m=p.match(/^\/api\/jobs\/([\w-]+)\/(check-application-email|check-verification|auto-apply|prepare|inspect|draft|edit|approve-fill|resume-navigation|allow-interactive|answer-navigation|approve-final|stop-navigation|prepare-letter|approve-letter|archive|apply-url)$/);assert(m,'Unknown action.',404);
     const [,jid,action]=m;
+    if(action==='check-application-email')return json(res,await service.checkApplicationEmail(jid));
     if(action==='check-verification')return json(res,await service.checkVerification(jid));
     if(action==='auto-apply')return json(res,await service.autoApply(jid));
     if(action==='prepare')return json(res,await service.explore(jid,{prepare:true}));

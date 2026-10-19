@@ -93,7 +93,7 @@ function renderLive(el){
  syncThinking();
  const area=$('#navigationAction');if(automatic){area.innerHTML='<div class="callout">'+esc(n.status==='skipped'?n.message:n.status==='review'&&!state.busy?'Ready. Auto apply completes and submits this application.':state.autonomy?.running?'Automatic application in progress. You can stop the run.':n.message)+'</div>';}
  if(['human','paused'].includes(n.status)&&n.phase==='inspect'&&!n.interactiveEnabled){area.innerHTML='<div class="callout">Sign-in and verification can need network requests. Enable this manual step, complete it in Chrome, then resume.</div><button id="allowInteractive">Allow this manual browser step</button>';$('#allowInteractive').onclick=()=>action(`/api/jobs/${j.id}/allow-interactive`,{confirm:true,sequence:n.sequence});}
- if(n.status==='verification'){area.innerHTML='<div class=callout>'+esc(n.message)+'</div><button id=checkVerification>Check code / result</button><button id=verificationGmail>Connect Gmail</button>';$('#checkVerification').onclick=()=>action(`/api/jobs/${j.id}/check-verification`);$('#verificationGmail').onclick=()=>$('#settingsButton').click();}
+ if(n.status==='verification'){area.innerHTML='<div class=callout>'+esc(n.message)+'</div><button id=checkVerification>Check verification / result</button><button id=verificationGmail>Connect Gmail</button>';$('#checkVerification').onclick=()=>action(`/api/jobs/${j.id}/check-verification`);$('#verificationGmail').onclick=()=>$('#settingsButton').click();}
  if(n.status==='review'&&!automatic)area.innerHTML=`<div class="callout">${j.draft?'Your application is ready for review. Approve & fill application starts filling and uploads.':'Preparing your documents for review.'}</div>`;
  if(n.status==='needs_answer'&&!automatic){
   area.innerHTML=`<div class="callout">Your answer is needed.</div>${fieldHTML(n.question,'')}<button id="answerNavigation" class="primary" ${busy?'disabled':''}>approve & continue</button>`;
@@ -114,7 +114,8 @@ function renderLive(el){
   $('#finalReviewed').onchange=()=>$('#sendFinal').disabled=!$('#finalReviewed').checked||busy;
   $('#sendFinal').onclick=()=>action(`/api/jobs/${j.id}/approve-final`,{confirm:true,key:n.finalReview.key});
  }
- if(['submitted','uncertain'].includes(n.status))area.innerHTML=`<div class="callout ${n.status==='uncertain'?'warn':''}">${esc(n.message)}</div>${jobMetadata(j)}<p class="small">${esc(j.title)} · ${esc(j.company)} · saved to application history</p><a href="/api/history.csv" download>Download application log</a>`;
+ if(['submitted','uncertain'].includes(n.status))area.innerHTML=`<div class="callout ${n.status==='uncertain'?'warn':''}">${esc(n.message)}</div>${jobMetadata(j)}<p class="small">${esc(j.title)} · ${esc(j.company)} · saved to application history</p><a href="/api/history.csv" download>Download application log</a>${n.status==='uncertain'?'<button id="checkApplicationEmail">Check Gmail for receipt</button>':''}<p class="small">${esc(j.emailCheck?.message||'')}</p>`;
+ if($('#checkApplicationEmail'))$('#checkApplicationEmail').onclick=()=>action(`/api/jobs/${j.id}/check-application-email`);
  if($('#resumeNavigation'))$('#resumeNavigation').onclick=()=>action(`/api/jobs/${j.id}/resume-navigation`);
  if($('#stopNavigation'))$('#stopNavigation').onclick=()=>action(state.autonomy?.running?'/api/autonomy/stop':`/api/jobs/${j.id}/stop-navigation`);
 }
@@ -193,7 +194,7 @@ $('#cancelModels').onclick=()=>action('/api/models/cancel');
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
 await refresh();setInterval(refresh,2200);setInterval(()=>{const img=$('#liveImage');if(img&&current?.navigation&&!['stopped'].includes(current.navigation.status))img.src=artifact('live.jpg',null)+'?t='+Date.now();},1400);
 
-$('#connectGmail').onclick=()=>action('/api/gmail/connect',{confirm:true});
+$('#connectGmail').onclick=async()=>{const r=await action('/api/gmail/connect',{confirm:true});if(r?.connection){$('#gmailSetup').hidden=false;$('#gmailExtensionPath').textContent=r.extensionDirectory;$('#gmailConnectionCode').value=JSON.stringify(r.connection);}};
 $('#checkGmail').onclick=()=>action('/api/gmail/check');
 $('#disconnectGmail').onclick=()=>action('/api/gmail/disconnect');
 

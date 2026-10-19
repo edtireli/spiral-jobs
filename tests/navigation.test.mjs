@@ -171,3 +171,28 @@ test('email verification stays open and completes the same submission without re
  const f=await fixture(t,req=>{if(req.method==='POST')phase++;if(phase===2)return 'Thank you for your application';if(phase===1)return `<p>A verification code was sent to fixture@example.test. Enter the security code.</p><form action=/verify method=post><label>Security code<input name=verification-code autocomplete=one-time-code maxlength=8 required></label><button>Verify code</button></form>`;return '<form action=/send method=post><label>Email<input type=email name=email required></label><label>Resume<input type=file name=cv></label><button>Submit application</button></form>';});
  const events=[];const n=new Navigator({dir:f.dir,allowTest:true,headless:true,profile,onEvent:(action,detail)=>events.push({action,detail}),decide:async({observation})=>({action:'final',target:observation.controls.find(c=>c.label==='Submit application').target})});t.after(()=>n.close());await n.open(f.url);await n.inspect();await n.approve(await prepared(n,f.dir));await n.finalSubmit(n.final.key);assert.equal(n.state.status,'verification');assert.equal(n.closed,false);assert.equal(f.requests.length,1);await assert.rejects(n.finalSubmit(n.final.key),/once/);n.lookupEmailCode=async()=>({code});await n.waitForReceipt();assert.equal(n.state.status,'submitted');assert.equal(f.requests.length,2);assert.equal(f.requests[1].url,'/verify');assert.equal(events.filter(e=>e.action==='final_submit_started').length,1);assert.ok(!JSON.stringify(events).includes(code));
 });
+
+test('verification before final submission uses Gmail without asking the model to invent a code',async t=>{
+ const code='12345678';let verified=false;
+ const f=await fixture(t,req=>{
+  if(req.url==='/verify'){verified=true;return '<h1>Application</h1><form action=/send method=post><button>Submit application</button></form>';}
+  if(req.url==='/send')return 'We have received your application';
+  return `<label>Email<input type=email name=email></label><button id=next onclick="document.body.innerHTML='<p>We sent a security code to your email.</p><form action=/verify method=post><label>Security code<input name=otp autocomplete=one-time-code></label><button>Verify code</button></form>'">Next</button>`;
+ });
+ const n=new Navigator({dir:f.dir,allowTest:true,headless:true,profile,decide:async({observation})=>{const next=observation.controls.find(c=>c.label==='Next'),button=next||observation.controls.find(c=>c.label==='Submit application');assert.ok(button,'Code field must be handled outside the model');return {action:next?'click':'final',target:button.target};}});
+ n.lookupEmailCode=async request=>{assert.equal(request.challengeBound,true);return {code};};t.after(()=>n.close());
+ await n.open(f.url);await n.inspect();await n.approve(await prepared(n,f.dir));assert.equal(verified,true);assert.equal(n.state.status,'final_review',n.state.message);assert.equal(f.requests.filter(r=>r.url==='/send').length,0);
+ await n.finalSubmit(n.final.key);assert.equal(n.state.status,'submitted');assert.equal(f.requests.filter(r=>r.url==='/send').length,1);
+});
+test('a preliminary thank-you with an email challenge cannot count as successful submission',async t=>{
+ const f=await fixture(t,req=>req.method==='POST'?'<p>Thank you for applying. Please verify your email. Check your inbox: fixture@example.test</p>':'<form action=/send method=post><label>Email<input type=email></label><button>Submit application</button></form>');
+ const n=new Navigator({dir:f.dir,allowTest:true,headless:true,profile,decide:async({observation})=>({action:'final',target:observation.controls.find(c=>c.label==='Submit application').target})});t.after(()=>n.close());
+ await n.open(f.url);await n.inspect();await n.approve(await prepared(n,f.dir));await n.finalSubmit(n.final.key);assert.equal(n.state.status,'verification');assert.equal(n.state.verification.kind,'email_link');assert.equal(n.closed,false);assert.equal(f.requests.length,1);
+});
+
+test('verification codes cannot be forwarded to a different application origin',async()=>{
+ const n=new Navigator({dir:os.tmpdir(),profile});n.initialOrigin='https://job-boards.greenhouse.io';n.exposed=true;
+ n.lookupEmailCode=async()=>{throw Error('Mailbox must not be accessed for an unapproved destination');};
+ const paused=await n.handleVerification({snapshot:{url:'https://other.example/verify',text:'Security code sent to fixture@example.test'},controls:[{isField:true,key:'otp',name:'otp',label:'Security code',autocomplete:'one-time-code'}]});
+ assert.equal(paused,true);assert.equal(n.state.status,'verification');assert.match(n.state.message,/changed destination/);
+});

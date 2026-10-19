@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Spiral Jobs Gmail",
+  "version": "0.1.0",
+  "description": "Read application verification emails for your local Spiral Jobs app in your regular Gmail session.",
+  "permissions": ["storage", "scripting"],
+  "host_permissions": ["https://mail.google.com/*", "http://127.0.0.1/*"],
+  "action": {"default_title": "Connect Spiral Jobs"},
+  "background": {"service_worker": "background.js"},
+  "content_security_policy": {"extension_pages": "script-src 'self'; object-src 'none'; connect-src http://127.0.0.1:*"}
+}

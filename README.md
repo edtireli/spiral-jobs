@@ -24,7 +24,7 @@ A small macOS workspace for finding Denmark roles, preparing English documents f
 - **Submit:** use separate filling and submission approvals, or explicitly enable Auto apply and start a run. **Pause AI** holds the current session; **Stop** ends it. Job collection alone never submits.
 - **Remember:** maintain one application per employer. Record position, location, postcode, address and deadline when listed. A submission without a receipt stays **uncertain** and blocks another attempt.
 
-Optional Gmail access looks only for verification messages relevant to the active application, in a separate signed-in browser profile. Optional tracked project links show visits privately in the app. Neither feature is required.
+Optional Gmail access looks only for verification messages relevant to the active application, through a companion extension in your regular Chrome profile. Optional tracked project links show visits privately in the app. Neither feature is required.
 
 ## Start on a Mac
 
@@ -59,7 +59,7 @@ This is a working prototype, not a promise of universal website automation. Some
 
 Form filling and file uploads send personal data to the employer before the final submit button on some websites. Approve that exposure deliberately. Auto apply is an explicit opt-in and can submit applications without another prompt. Uncertain or partially exposed attempts must be checked with the employer before considering a retry.
 
-Gmail integration is experimental: it needs a separate Google Chrome sign-in and supports verification codes from recognized application providers. Google may require manual sign-in, and Gmail UI changes can break extraction. Codes are not sent to a model or included in the action log. No mail-sending API is implemented.
+Gmail uses the optional [Chrome companion](extensions/gmail/README.md), so sign-in happens in your regular browser. The app requests narrowly scoped searches for verification codes and receipts from recognized application providers. Gmail UI changes can break extraction. Codes are not sent to a model or included in the action log. There is no mail-sending function. Email links that cannot be safely completed as a code step require your attention. A verification email is never counted as a receipt. For an unresolved attempt, **Check Gmail for receipt** can reconcile an exact employer and role match without submitting again.
 
 ## Architecture
 
