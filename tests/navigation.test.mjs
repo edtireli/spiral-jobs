@@ -57,6 +57,14 @@ test('CV inference never supplies consent, eligibility or unestablished personal
  for(const label of ['Work authorisation experience','Visa sponsorship','Do you agree to privacy terms?','Disability experience','Salary per month','Fluent Danish experience'])assert.equal(canInfer({type:'text',label,name:''}),false);
  assert.equal(canInfer({type:'text',label:'Describe your Python experience',name:''}),true);
 });
+test('optional LinkedIn links stay empty even in saved drafts; required URLs need an established value',()=>{
+ const field={key:'social',type:'url',label:'LinkedIn Profile',name:'linkedin',required:false};
+ const p={...profile,linkedin:'https://www.linkedin.com/in/fixture'};
+ assert.equal(proposedAnswers({form:{fields:[field]}},p).social,'');
+ const n=new Navigator({profile:p});n.answers={social:p.linkedin};assert.equal(n.fieldAnswer(field),'');
+ assert.equal(canInfer({...field,label:'LinkedIn experience profile'}),false);
+ assert.equal(proposedAnswers({form:{fields:[{...field,required:true}]}},{...p,linkedin:''}).social,'');
+});
 test('job address and deadline use source evidence; absent postcodes are never guessed',()=>{
  const d=jobDetails([{'@type':'JobPosting',title:'AI Engineer',validThrough:'2026-12-01',jobLocation:{address:{streetAddress:'Example Street 4',postalCode:'2100',addressLocality:'Copenhagen'}}}],'','https://example.com');
  assert.equal(d.postcode,'2100');assert.equal(d.address,'Example Street 4');assert.equal(d.deadline,'2026-12-01');

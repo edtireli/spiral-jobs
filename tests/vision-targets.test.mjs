@@ -16,3 +16,11 @@ test('vision cannot refill an already completed zero-years answer',()=>{
  const completed={controls:[{target:'0:4',label:'Years of consulting experience',type:'text',isField:true,filled:true,pending:false,invalid:false}]};
  assert.equal(validVisionAction({action:'fill',target:'0:4',reason:'Zero is invalid'},completed,'fill'),false);
 });
+test('LinkedIn import cannot become a navigation or submit action',()=>{
+ for(const control of [{label:'Apply with LinkedIn',type:'submit'},{label:'Continue',href:'https://www.linkedin.com/oauth/v2/authorization'}]){
+  const o={controls:[{...control,target:'0:1',isField:false}]};
+  for(const action of ['click','final'])for(const phase of ['inspect','fill'])assert.equal(validVisionAction({action,target:'0:1',reason:'Use LinkedIn'},o,phase),false);
+ }
+ const o={controls:[{target:'0:2',label:'LinkedIn Profile',isField:true,required:false,pending:true}]};
+ assert.equal(validVisionAction({action:'fill',target:'0:2',reason:'Add profile'},o,'fill'),false);
+});

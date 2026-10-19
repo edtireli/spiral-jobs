@@ -19,7 +19,7 @@ https://github.com/user-attachments/assets/e72989ad-ae6e-42ef-9114-d3f239a14661
 - **Find:** collect relevant Denmark roles from configured Greenhouse, Lever and Ashby boards when you click Find jobs, or add a listing yourself.
 - **Read:** scroll through listings and retain screenshots and text beyond the first viewport.
 - **Prepare:** use the CV as evidence, make small profile changes, and write a short application letter when required. Compile editable LaTeX into PDFs.
-- **Navigate:** use screenshots plus observed page controls to plan clicks, fill fields, attach the right PDFs and advance through forms.
+- **Navigate:** use the standard application form, with screenshots and observed controls to plan clicks, fill fields and attach PDFs. Skip LinkedIn sign-in/import and optional LinkedIn links. Keep the same session for verification after Submit.
 - **Follow:** a red frame and **AI in control** badge show when automation owns the workflow. The red **AI** cursor points to the real browser targets, in the live view and recordings. Expand model output when you want more detail.
 - **Submit:** choose **Review each step**, **Approve before submitting**, or **Full auto** when starting an application. Review modes hold the same browser for approval; Full auto can submit without another prompt. **Pause AI** holds the current session; **Stop** ends it. Job collection alone never submits.
 - **Remember:** maintain one application per employer. Record position, location, postcode, address and deadline when listed. A submission without a receipt stays **uncertain** and blocks another attempt.
