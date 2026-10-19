@@ -31,9 +31,9 @@ Optional Gmail access looks only for verification messages relevant to the activ
 The downloadable build is for **Apple Silicon, macOS 14+**. It includes Node, Chromium, Ollama and Tectonic; model weights are downloaded separately. The current release is experimental and ad-hoc signed, **not Apple notarized**. macOS may ask you to allow the app in Privacy & Security; review the source and release checksum first. Do not disable Gatekeeper system-wide.
 
 1. Download the release ZIP, extract it, and move **Spiral Jobs.app** into Applications.
-2. Open the app. In **Profile**, paste your real CV text and contact details. Optionally select your existing standalone LaTeX CV.
+2. Open the app. In **Profile**, paste your real CV text and contact details. Add availability, languages or work authorization under **Additional facts**, one fact per line. These saved facts become evidence for application answers. Optionally select your existing standalone LaTeX CV.
 3. In **Settings → Get a model**, download a vision-capable Ollama model, or select models you already have. Choose a planning model and a navigation model; they can be the same.
-4. Click **Find jobs**, choose a role, and prepare the application. Review documents and answers before your first live run.
+4. Choose your roles, topics and Denmark locations in **Interests**. Click **Find jobs**, choose a role, and prepare the application. Review documents and answers before your first live run.
 
 The app starts its local server and Ollama when needed, discovers a free local port, and reconnects to its own workspace. Data is stored in `~/Library/Application Support/Spiral Jobs/data`. Nothing in a fresh installation is prefilled with the author's personal information.
 
@@ -74,7 +74,7 @@ flowchart LR
 | --- | --- |
 | `lib/sources.mjs` | Job board adapters and Denmark filtering |
 | `lib/model.mjs`, `lib/answer-evidence.mjs` | Drafts, factual grounding and answer verification |
-| `lib/navigator.mjs`, `lib/navigator.mjs` | Observations, constrained actions, live progress |
+| `lib/navigator.mjs`, `lib/navigation-service.mjs` | Observations, constrained actions, live progress |
 | `lib/documents.mjs`, `templates/` | Minimal CV edits, LaTeX layouts and PDF rendering |
 | `lib/store.mjs`, `lib/autonomy.mjs` | Durable history, duplicate protection and automatic runs |
 | `lib/mail.mjs`, `lib/email-verification.mjs` | Isolated Gmail verification and pending form handling |

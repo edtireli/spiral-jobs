@@ -20,3 +20,13 @@ test('original LaTeX layouts retain their body and can carry the project link',(
  const {cv}=documentSources({customCV:source,profile:{name:'Alex',profile:'Actual profile'},job:{title:'Data Engineer',company:'Fictional Research'},projectLink:'https://github.com/edtireli/spiral-jobs'});
  assert.ok(cv.includes('Original content.'));assert.ok(cv.includes('\\href{https://github.com/edtireli/spiral-jobs}'));assert.equal((cv.match(/\\end\{document\}/g)||[]).length,1);
 });
+test('additional facts enter model evidence and survive a replacement CV without duplication',async t=>{
+ const dir=await mkdtemp(path.join(os.tmpdir(),'spiral-facts-')),service=new Service(path.resolve(import.meta.dirname,'..'),dir);await service.init();
+ t.after(async()=>{service.store.close();await rm(dir,{recursive:true,force:true});});
+ await saveProfile(service,{name:'Alex Jordan Jensen',firstName:'Alex Jordan',lastName:'Jensen',email:'alex@example.com',cvText:'MSc in applied mathematics. Built a Python data pipeline.',extraFacts:'Native English.\nAvailable from January.'});
+ assert.deepEqual(service.store.settings().profile.facts.filter(f=>f.id.startsWith('extra-')).map(f=>f.text),['Native English.','Available from January.']);
+ await saveProfile(service,{cvText:'Updated CV: MSc in applied mathematics. Built and tested a Python data pipeline.'});
+ assert.equal(service.store.settings().profile.facts.length,3);
+ assert.equal(service.store.settings().profile.firstName,'Alex Jordan');assert.equal(service.store.settings().profile.lastName,'Jensen');
+ await saveProfile(service,{extraFacts:''});assert.equal(service.store.settings().profile.facts.length,1);
+});
