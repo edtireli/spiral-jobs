@@ -22,6 +22,7 @@ https://github.com/user-attachments/assets/4780a6d8-8639-4de4-96b4-1f714e0c8b7c
 - **Navigate:** use the standard application form, with screenshots and observed controls to plan clicks, fill fields and attach PDFs. Skip LinkedIn sign-in/import and optional LinkedIn links. Keep the same session for verification after Submit.
 - **Follow:** a red frame and **AI in control** badge show when automation owns the workflow. The red **AI** cursor points to the real browser targets, in the live view and recordings. Expand model output when you want more detail.
 - **Submit:** choose **Review each step**, **Approve before submitting**, or **Full auto** when starting an application. Review modes hold the same browser for approval; Full auto can submit without another prompt. **Pause AI** holds the current session; **Stop** ends it. Job collection alone never submits.
+- **Verify:** after the final Submit control is activated, **Let AI handle this CAPTCHA** can make one bounded attempt on a supported visual challenge with your confirmation. It uses the original browser and checks for a receipt without clicking the application's Submit again. A new challenge needs new confirmation; Pause and Stop remain available.
 - **Remember:** maintain one application per employer. Record position, location, postcode, address and deadline when listed. A submission without a receipt stays **uncertain** and blocks another attempt.
 
 Optional Gmail access looks only for verification messages relevant to the active application, through a companion extension in your regular Chrome profile. Optional tracked project links show visits privately in the app. Neither feature is required.
@@ -57,7 +58,7 @@ There is no native MLX adapter in this release. An additional inference backend 
 
 ## Boundaries that matter
 
-This is a working prototype, not a promise of universal website automation. Some sites require human sign-in, consent or CAPTCHA completion. The app pauses when facts cannot be supported. It can describe transferable skills; it must not fabricate employers, qualifications, dates or experience. A model's explanation is not proof that an answer is correct.
+This is a working prototype, not a promise of universal website automation. Some sites still require human sign-in, consent or CAPTCHA completion. Confirmed CAPTCHA attempts are limited to observed puzzle controls in a recognized challenge frame; unsupported or unresolved challenges remain open for attention. The app pauses when facts cannot be supported. It can describe transferable skills; it must not fabricate employers, qualifications, dates or experience. A model's explanation is not proof that an answer is correct.
 
 Form filling and file uploads send personal data to the employer before the final submit button on some websites. Approve that exposure deliberately. Auto apply is an explicit opt-in and can submit applications without another prompt. Uncertain or partially exposed attempts must be checked with the employer before considering a retry.
 
@@ -87,6 +88,7 @@ flowchart LR
 | `lib/documents.mjs`, `templates/` | Minimal CV edits, LaTeX layouts and PDF rendering |
 | `lib/store.mjs`, `lib/autonomy.mjs` | Durable history, duplicate protection and automatic runs |
 | `lib/mail.mjs`, `lib/email-verification.mjs` | Isolated Gmail verification and pending form handling |
+| `lib/captcha.mjs` | Confirmed, bounded visual challenge attempts in the original submission session |
 | `tracking/` | Optional hosted redirect and private visit log |
 | `desktop/` | Native Mac shell, local service lifecycle and release builder |
 
@@ -108,7 +110,7 @@ npm run audit:privacy
 npm run demo
 ```
 
-Tests exercise controlled local fixtures, approval boundaries, evidence checks, changed attachments, one-shot submission, uncertain outcomes, form navigation, scrolling state, pause/resume before and after submission, email verification and tracking. They do not submit real applications or evaluate model accuracy across live sites. The CI badge reports the actual workflow state.
+Tests exercise controlled local fixtures, approval boundaries, evidence checks, changed attachments, one-shot submission, uncertain outcomes, form navigation, scrolling state, pause/resume before and after submission, email verification, confirmed CAPTCHA actions and tracking. They do not submit real applications or evaluate model accuracy across live sites. The CI badge reports the actual workflow state.
 
 Build instructions: [desktop/BUILD.md](desktop/BUILD.md). Optional free hosted tracking: [tracking/README.md](tracking/README.md). Security and privacy: [SECURITY.md](SECURITY.md).
 
