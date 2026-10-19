@@ -48,6 +48,25 @@ test('an authorized automatic visit allows form initialization without entering 
  const o=await observe(n.page);await assert.rejects(n.fill(o.targets.get(o.controls.find(c=>c.type==='email').target)),/manual approval/);
  assert.equal(await n.page.locator('input').inputValue(),'');
 });
+
+test('observed submit controls retain real form association, including external form attributes',async t=>{
+ const f=await fixture(t,'<button id=outside>Next</button><button id=external form=application>Continue</button><form id=application><button id=inside>Review</button><button id=plain type=button>Next</button></form>');
+ const n=new Navigator({dir:f.dir,allowTest:true,headless:true,profile});t.after(()=>n.close());await n.open(f.url);
+ const controls=(await observe(n.page)).controls,byName=name=>controls.find(c=>c.name===name);
+ assert.equal(byName('outside').type,'submit');assert.equal(byName('outside').formAssociated,false);
+ for(const name of ['external','inside']){assert.equal(byName(name).type,'submit');assert.equal(byName(name).formAssociated,true);}
+ assert.equal(byName('plain').type,'button');assert.equal(byName('plain').formAssociated,true);assert.equal(f.requests.length,0);
+});
+
+test('a Next button that gains a form after the model decision is rechecked before any click',async t=>{
+ const f=await fixture(t,'<form id=application action=/send method=post><label>Email<input type=email name=email></label></form><button id=next>Next</button>');
+ let decisions=0;const n=new Navigator({dir:f.dir,allowTest:true,headless:true,profile,decide:async({observation})=>{
+  const c=observation.controls.find(c=>c.name==='next');decisions++;
+  if(!c.formAssociated){await n.page.locator('#next').evaluate(el=>el.setAttribute('form','application'));return {action:'click',target:c.target};}
+  return {action:'final',target:c.target};
+ }});t.after(()=>n.close());await n.open(f.url);await n.inspect();await n.approve(await prepared(n,f.dir));
+ assert.equal(decisions,2);assert.equal(n.state.status,'final_review',n.state.message);assert.equal(f.requests.length,0);
+});
 test('requested location and employment answers use established profile values and exact options',()=>{
  const fields=[{key:'location',type:'text',kind:'combobox',label:'Are you based in Copenhagen or the surrounding area?'},{key:'current',type:'text',label:'Current company'},{key:'years',type:'select-one',label:'How many years of consulting experience do you have?',options:[{label:'0',value:'zero'},{label:'3',value:'three'}]},{key:'place',type:'select-one',label:'Are you based in Copenhagen?',options:[{label:'Yes',value:'yes-value'},{label:'No',value:'no-value'}]}];
  assert.deepEqual(proposedAnswers({form:{fields}},{...profile,location:'Copenhagen, Denmark'}),{location:'Yes',current:'',years:'',place:'yes-value'});

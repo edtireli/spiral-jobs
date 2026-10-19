@@ -37,9 +37,16 @@ test('semantic correction lists permitted pairs and retries only the model resul
 });
 
 test('submit controls labelled Next still require the final action after filling',()=>{
- for(const label of ['Next','Continue','Review']){
-  const o={controls:[{target:'0:1',label,type:'submit',isField:false}]},choices=visionChoices(o,'fill');
+ for(const label of ['Next','Continue','Review'])for(const formAssociated of [true,undefined]){
+  const o={controls:[{target:'0:1',label,type:'submit',isField:false,formAssociated}]},choices=visionChoices(o,'fill');
   assert.equal(validVisionAction({action:'click',target:'0:1',reason:'Continue'},o,'fill'),false);
   assert.ok(!choices.some(c=>c.action==='click'));assert.ok(choices.some(c=>c.action==='final'&&c.target==='0:1'));
  }
+});
+
+test('default submit type outside a form is a navigation button, not a final control',()=>{
+ const o={controls:[{target:'0:1',label:'Next',type:'submit',isField:false,formAssociated:false}]},choices=visionChoices(o,'fill');
+ assert.equal(validVisionAction({action:'click',target:'0:1',reason:'Continue'},o,'fill'),true);
+ assert.equal(validVisionAction({action:'final',target:'0:1',reason:'Submit'},o,'fill'),false);
+ assert.ok(choices.some(c=>c.action==='click'&&c.target==='0:1'));assert.ok(!choices.some(c=>c.action==='final'));
 });
