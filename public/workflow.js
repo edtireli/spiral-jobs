@@ -10,7 +10,7 @@ export function applicationAction(job,busy=false,automatic=false){
  if(n?.status==='final_review')return {action:'live',label:'Review & submit application',hint:'The form is filled. Your final approval sends it.'};
  if(['needs_answer','human','needs_document','document_review'].includes(n?.status))return {action:'live',label:{needs_answer:'Answer & continue',human:'Continue application',needs_document:'Prepare required letter',document_review:'Review required letter'}[n.status],hint:n.message};
  if(automatic&&!job.blocked)return {action:'auto-apply',label:'Auto apply to this job',hint:'Choose review, final approval or full auto.'};
- if(n?.status==='paused')return {action:'resume-navigation',label:'Resume application',hint:n.message};
+ if(n?.status==='paused')return {action:'resume-navigation',label:n.recoverable==='model_decision'&&n.exposed?'Resume same browser':'Resume application',hint:n.message};
  if(n?.status==='review'&&n.phase==='inspect'){
   if(d?.snapshot.navigation)return {action:'approve',label:'Approve & fill application',hint:'Review your CV and answers. Approval starts filling and uploads.'};
   return {action:'draft',label:'Prepare application',hint:'The form is open. Prepare your documents for review.'};

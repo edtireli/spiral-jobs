@@ -43,6 +43,8 @@ The app starts its local server and Ollama when needed, discovers a free local p
 
 Pausing cannot recall a request already sent to an employer. If the final submit click happened first, resuming only checks that submission's result. **Stop** closes the browser, keeps the recording, and preserves duplicate protection for exposed or uncertain attempts. A lost dashboard connection is shown explicitly; it does not mean the run is paused.
 
+If a model decision fails validation, the app tries one correction before pausing. **Resume same browser** retries that decision in the open session, retaining filled fields and uploaded files. Full auto can then finish under its original authorization; Final approval still waits before submitting. Stop or disable automatic applications to end the session. A closed session cannot be restored by retrying.
+
 ### Bring your models
 
 The current backend uses the **local Ollama HTTP API**. Both model roles currently require vision support; the planner retains a screenshot fallback when a full listing capture is unavailable. Select any compatible local model; there is no account or cloud inference requirement. A smaller model generally uses less memory; evaluate its decisions on your target sites before enabling automatic submission.

@@ -80,3 +80,19 @@ test('verification shows live Gmail connection state without asking paired users
  gmail={status:'connected',lookup:{error:'No current code'}};await status('Gmail connected · lookup needs attention.');assert.equal(await b.page.locator('#verificationGmail').textContent(),'Gmail settings');
  assert.deepEqual(posts,[],'status changes never reconnect, retry or submit');await b.page.locator('#checkVerification').click();await b.page.waitForResponse(r=>r.url().endsWith('/api/state'));assert.deepEqual(posts,['/api/jobs/fixture/check-verification']);assert.deepEqual(errors,[]);
 });
+
+test('recoverable exposed application offers Resume same browser without automatic replay',async t=>{
+ const posts=[],job={id:'fixture',company:'Fixture',title:'AI role',location:'Copenhagen',url:'https://example.test/job',stage:'paused',revision:1,blocked:{status:'incomplete'},navigation:{status:'paused',phase:'fill',sequence:1,message:'Resume to retry the decision in this same browser; completed fields stay filled.',exposed:true,recoverable:'model_decision',automatic:true,approvalMode:'final'}};
+ const server=http.createServer(async(req,res)=>{
+  if(req.method==='POST'){posts.push(req.url);res.setHeader('Content-Type','application/json');res.end('{"queued":true}');return;}
+  if(req.url==='/api/state'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({busy:null,jobs:[job],history:[],settings:{navigationModel:'fixture'},candidate:{},runtime:{status:'ready'},autonomy:{enabled:true,running:false,available:0}}));return;}
+  if(req.url==='/api/jobs/fixture'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(job));return;}
+  if(req.url.startsWith('/artifacts/')){res.setHeader('Content-Type','image/png');res.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jhS8AAAAASUVORK5CYII=','base64'));return;}
+  const name=req.url==='/'?'index.html':req.url.slice(1);res.setHeader('Content-Type',name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':'text/html');try{res.end((await readFile(path.join(root,name),'utf8')).replace('__CSRF__','test'));}catch{res.writeHead(404);res.end();}
+ });
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));const b=await browserSession({allowTest:true});t.after(async()=>{await b.browser.close();await new Promise(r=>server.close(r));});b.gate.approved=true;
+ await b.page.goto(`http://127.0.0.1:${server.address().port}`);await b.page.locator('[data-id=fixture]').click();
+ assert.match(await b.page.locator('#applicationAction').textContent(),/Resume same browser/);assert.equal(await b.page.locator('#resumeNavigation').textContent(),'Resume same browser');
+ assert.equal(await b.page.locator('#inspect').isDisabled(),true);assert.equal(await b.page.locator('#draft').isDisabled(),true);assert.ok((await b.page.locator('#tabContent').textContent()).includes('Final send needs approval.'));
+ assert.deepEqual(posts,[]);await b.page.locator('#resumeNavigation').click();await b.page.waitForResponse(r=>r.url().endsWith('/api/state'));assert.deepEqual(posts,['/api/jobs/fixture/resume-navigation']);
+});

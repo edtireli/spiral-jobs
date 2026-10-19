@@ -248,3 +248,29 @@ test('disabling automatic applications stops a browser held after a model failur
  const original=f.service.session(job.id);assert.equal(original.state.recoverable,'model_decision');await f.service.setAutonomy(false);
  assert.equal(original.closed,true);assert.equal(f.posts.length,0);assert.equal(f.service.store.blocked(job).status,'uncertain');await assert.rejects(async()=>f.service.resumeNavigation(job.id),/no longer open/);
 });
+
+test('Stop and disable cancel a resumed automatic decision even after its batch ended',async t=>{
+ for(const control of ['stop','disable'])await t.test(control,async t=>{
+  const f=await fixture(t,()=>basic),job=f.add('Resumed Stop '+control),create=f.service.createNavigator;let decisions=0,ready,release;
+  const started=new Promise(r=>ready=r),pending=new Promise(r=>release=r);
+  f.service.createNavigator=options=>{const n=create(options),decide=n.decide;n.decide=async args=>{if(++decisions===1)throw new Error('No valid decision');ready();await pending;return decide(args);};return n;};
+  await f.service.setAutonomy(true);await f.service.autoApply(job.id);await f.service.running;
+  const original=f.service.session(job.id),record=f.service.store.blocked(job);assert.equal(original.state.recoverable,'model_decision');assert.equal(f.service.autoBatch.running,false);
+  await f.service.resumeNavigation(job.id);await started;assert.equal(original.state.status,'running');
+  const fills=f.service.store.events(job.id).filter(e=>e.action==='field_filled').length,actions=f.service.store.events(job.id).filter(e=>e.action==='navigation_action').length;
+  if(control==='disable')await f.service.setAutonomy(false);else await f.service.stopAutonomy();
+  release();await f.service.running;
+  assert.equal(f.service.autoBatch.stopping,true);assert.equal(f.service.autoAllowed(),false);assert.equal(original.closed,true);assert.equal(f.posts.length,0);
+  assert.equal(f.service.store.get(job.id).navigation.status,'stopped');assert.equal(f.service.store.blocked(job).id,record.id);assert.equal(f.service.store.blocked(job).status,'uncertain');
+  assert.equal(f.service.store.events(job.id).filter(e=>e.action==='field_filled').length,fills);assert.equal(f.service.store.events(job.id).filter(e=>e.action==='navigation_action').length,actions,'late model result cannot execute another action');
+  assert.equal(f.service.store.events(job.id).filter(e=>e.action==='final_submit_started').length,0);await assert.rejects(async()=>f.service.resumeNavigation(job.id),/no longer open/);
+ });
+});
+
+test('a submit button labelled Next cannot be clicked without final review',async t=>{
+ const f=await fixture(t,()=>basic.replace('Submit application','Next')),job=f.add('Mislabelled Submit');
+ await f.service.setAutonomy(true);await f.service.autoApply(job.id);await f.service.running;
+ assert.equal(f.posts.length,0);assert.equal(f.service.store.blocked(job).status,'incomplete');
+ assert.match(f.service.store.get(job.id).automatic.reason,/submit control requires final submission review/);
+ assert.equal(f.service.store.events(job.id).filter(e=>e.action==='final_submit_started').length,0);
+});

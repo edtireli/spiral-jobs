@@ -35,3 +35,11 @@ test('semantic correction lists permitted pairs and retries only the model resul
  assert.equal(requests.length,2);assert.equal(result.action,'final');assert.match(requests[1].messages.at(-1).content,/failed validation/);assert.ok(requests[1].messages.at(-1).content.includes(repairInstruction));
  let calls=0;await assert.rejects(localJSON(body,{repairInstruction,validate:d=>validVisionAction(d,completed,'fill'),chat:async()=>{calls++;return {message:{content:JSON.stringify({action:'click',target:'0:5',reason:'Submit'})}};}}),/could not produce/);assert.equal(calls,2,'invalid submit clicks are rejected after a bounded model-only retry');
 });
+
+test('submit controls labelled Next still require the final action after filling',()=>{
+ for(const label of ['Next','Continue','Review']){
+  const o={controls:[{target:'0:1',label,type:'submit',isField:false}]},choices=visionChoices(o,'fill');
+  assert.equal(validVisionAction({action:'click',target:'0:1',reason:'Continue'},o,'fill'),false);
+  assert.ok(!choices.some(c=>c.action==='click'));assert.ok(choices.some(c=>c.action==='final'&&c.target==='0:1'));
+ }
+});
