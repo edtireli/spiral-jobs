@@ -23,6 +23,7 @@ async function refresh(){try{const oldAuto=state?.autonomy?.enabled;state=await 
  if(!state.autonomy?.running)followedAutoJob=null;
  if(selected&&(!current||(previousBusy&&!state.busy)||state.jobs.find(j=>j.id===selected)?.navigation?.sequence!==current?.navigation?.sequence||state.jobs.find(j=>j.id===selected)?.revision!==current?.revision)&&!dirty)await select(selected,false);
  if(!initialSelection){initialSelection=true;const remembered=localStorage.getItem('selectedJob');const first=state.jobs.find(j=>j.id===(state.busy?.jobId||remembered))||state.jobs.filter(j=>j.navigation&&!j.blocked).sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt))[0]||state.jobs.find(j=>j.draft&&!j.blocked);if(first)await select(first.id);}
+ syncVerification();
  previousBusy=!!state.busy;
  }catch(e){if(state?.control)renderExecution({...state.control,status:'disconnected'});notice('Dashboard connection lost. '+e.message);}}
 function renderList(){const listPosition=$('#jobList').scrollTop;const q=$('#search').value.toLowerCase();const jobs=state.jobs.filter(j=>(filter!=='ready'||j.stage==='ready')&&(filter==='history'||j.stage!=='archived')&&`${j.company} ${j.title}`.toLowerCase().includes(q));
@@ -94,7 +95,7 @@ function renderLive(el){
  syncThinking();
  const area=$('#navigationAction');if(automatic){area.innerHTML='<div class="callout">'+esc(n.status==='skipped'?n.message:n.status==='review'&&!state.busy?'Ready. Auto apply completes and submits this application.':state.autonomy?.running?'Automatic application in progress. You can stop the run.':n.message)+'</div>';}
  if(['human','paused'].includes(n.status)&&n.phase==='inspect'&&!n.interactiveEnabled){area.innerHTML='<div class="callout">Sign-in and verification can need network requests. Enable this manual step, complete it in Chrome, then resume.</div><button id="allowInteractive">Allow this manual browser step</button>';$('#allowInteractive').onclick=()=>action(`/api/jobs/${j.id}/allow-interactive`,{confirm:true,sequence:n.sequence});}
- if(n.status==='verification'){area.innerHTML='<div class=callout>'+esc(n.message)+'</div><button id=checkVerification>Check verification / result</button><button id=verificationGmail>Connect Gmail</button>';$('#checkVerification').onclick=()=>action(`/api/jobs/${j.id}/check-verification`);$('#verificationGmail').onclick=()=>$('#settingsButton').click();}
+ if(n.status==='verification')syncVerification();
  if(n.status==='review'&&!automatic)area.innerHTML=`<div class="callout">${j.draft?'Your application is ready for review. Approve & fill application starts filling and uploads.':'Preparing your documents for review.'}</div>`;
  if(n.status==='needs_answer'&&!automatic){
   area.innerHTML=`<div class="callout">Your answer is needed.</div>${fieldHTML(n.question,'')}<button id="answerNavigation" class="primary" ${busy?'disabled':''}>approve & continue</button>`;
@@ -119,6 +120,17 @@ function renderLive(el){
  if($('#checkApplicationEmail'))$('#checkApplicationEmail').onclick=()=>action(`/api/jobs/${j.id}/check-application-email`);
  if($('#resumeNavigation'))$('#resumeNavigation').onclick=()=>action(`/api/jobs/${j.id}/resume-navigation`);
  if($('#stopNavigation'))$('#stopNavigation').onclick=()=>action(state.autonomy?.running?'/api/autonomy/stop':`/api/jobs/${j.id}/stop-navigation`);
+}
+function syncVerification(){
+ const area=$('#navigationAction'),j=current,n=j?.navigation;if(!area||tab!=='live'||n?.status!=='verification')return;
+ const gmail=state.gmail||{},status=gmail.status,email=n.verification?.kind!=='captcha',unpaired=gmail.paired===false||(gmail.paired===undefined&&['disconnected','setup'].includes(status));
+ const attention=status==='attention'||!!gmail.lookup?.error;
+ const label=status==='connected'?(attention?'Gmail connected · lookup needs attention.':'Gmail connected.'):status==='reconnecting'?'Reconnecting Gmail…':status==='closed'||gmail.paired===true&&status==='disconnected'?'Gmail paired · open its companion in Chrome.':status==='setup'?'Gmail pairing is incomplete.':status==='disconnected'?'Gmail not connected.':attention?'Gmail needs attention.':'Gmail status unavailable.';
+ const settings=email&&(unpaired||attention||!['connected','reconnecting'].includes(status));
+ const signature=JSON.stringify([j.id,n.message,email,label,settings,unpaired,!!state.busy]);if(area.dataset.verification===signature)return;area.dataset.verification=signature;
+ area.innerHTML=`<div class="callout">${esc(n.message)}</div>${email?`<p id="verificationGmailStatus" class="small" role="status">${esc(label)}</p>`:''}<button id="checkVerification" ${state.busy?'disabled':''}>Check verification / result</button>${settings?`<button id="verificationGmail">${unpaired?'Connect Gmail':'Gmail settings'}</button>`:''}`;
+ $('#checkVerification').onclick=()=>action(`/api/jobs/${j.id}/check-verification`);
+ if($('#verificationGmail'))$('#verificationGmail').onclick=()=>{$('#settingsButton').click();$('#gmailStatus')?.closest('details')?.setAttribute('open','');};
 }
 function performApplicationAction(){
  const j=current,next=applicationAction(j,!!state.busy,!!state.autonomy?.enabled);if(next.disabled)return;

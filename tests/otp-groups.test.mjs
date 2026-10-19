@@ -102,3 +102,10 @@ test('a normal single code field still verifies, while a verification link stays
  assert.equal(await enterVerification(f.n,f.challenge,{code},observe),true);assert.equal(await confirmations(f.page),1);
  assert.equal(emailChallenge({snapshot:{text:`Please verify your email via the confirmation link sent to ${recipient}.`},controls:[]},recipient).kind,'email_link');
 });
+
+test('a verified letters-only code preserves case across all eight inputs',async t=>{
+ const f=await fixture(t,group()+button()),letters='aBcDeFgH';
+ assert.equal(await enterVerification(f.n,f.challenge,{code:letters},observe),true);
+ assert.deepEqual(await f.page.locator('input').evaluateAll(es=>es.map(e=>e.value)),[...letters]);
+ assert.equal(await confirmations(f.page),1);assert.ok(!JSON.stringify(f.events).includes(letters));
+});

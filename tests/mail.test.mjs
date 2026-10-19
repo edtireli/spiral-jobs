@@ -33,14 +33,14 @@ test('email challenges bind to the entered recipient and never confuse a link wi
  assert.equal(emailChallenge({...o,snapshot:{...o.snapshot,text:'Security code sent to another@example.test'}},'fixture@example.test',{recipientBound:true}).blocked,true);
  assert.equal(emailChallenge({...o,snapshot:{...o.snapshot,text:'Verify your email: check your inbox, fixture@example.test'},controls:[]},'fixture@example.test').kind,'email_link');
 });
-test('companion is token scoped, accepts only the pending lookup and is revoked on reconnect',async()=>{
+test('companion is token scoped, accepts only the pending lookup and preserves an authorized reconnect',async()=>{
  let settings={};const bridge=new MailBridge({settings:()=>settings,save:s=>settings=s});
  const connection=bridge.connect('http://127.0.0.1:4317');assert.equal(bridge.authorized('Bearer '+connection.token),true);assert.equal(bridge.authorized('Bearer wrong'),false);
  const promise=bridge.read(policy);await new Promise(r=>setImmediate(r));const {request}=bridge.poll();assert.equal(request.recipient,policy.recipient);assert.equal(request.token,undefined);
  assert.throws(()=>bridge.complete({id:'stale',account:policy.recipient,messages:[]}));
  assert.throws(()=>bridge.complete({id:request.id,account:'another@example.test',messages:[]}));
  bridge.complete({id:request.id,account:policy.recipient,messages:[message]});const r=await promise;assert.equal(r.messages[0].searchedRecipient,policy.recipient);
- bridge.connect(connection.origin);assert.equal(bridge.authorized('Bearer '+connection.token),false);
+ assert.equal(bridge.connect(connection.origin).token,connection.token);assert.equal(bridge.authorized('Bearer '+connection.token),true);
 });
 
 test('official Greenhouse regional mail domains are searched and validated',()=>{

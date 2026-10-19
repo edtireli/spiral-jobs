@@ -30,7 +30,7 @@ export async function start({port=Number(process.env.JOB_DESK_PORT||4317),dataDi
     assert(req.method==='POST'&&service.mailbox.bridge.authorized(req.headers.authorization),'Gmail connection expired.',403);
     assert(req.headers['content-type']?.startsWith('application/json'),'JSON required.',415);
     let raw='';for await(const chunk of req){raw+=chunk;assert(raw.length<240000,'Email result too large.',413);}const body=JSON.parse(raw||'{}');
-    if(p==='/api/gmail/bridge/poll'){const pending=service.mailbox.bridge.poll();await service.mailbox.check();return json(res,pending);}
+    if(p==='/api/gmail/bridge/poll'){const pending=service.mailbox.bridge.poll(extensionOrigin);await service.mailbox.check();return json(res,pending);}
     if(p==='/api/gmail/bridge/result')return json(res,service.mailbox.bridge.complete(body));
     throw Object.assign(new Error('Unknown companion action.'),{status:404});
    }

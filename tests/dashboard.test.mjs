@@ -55,3 +55,28 @@ test('Find jobs only collects; Auto apply follows the current job live without e
  assert.deepEqual(posts,['/api/scan','/api/autonomy/run']);assert.equal(await b.page.locator('#stopAutoButton').isVisible(),true);assert.equal(await b.page.locator('#approve').isVisible(),false);
  active='b';await b.page.waitForFunction(()=>document.querySelector('#liveMessage')?.textContent==='Working on b');assert.equal(await b.page.locator('.detail-top h2').textContent(),'Role b');assert.deepEqual(errors,[]);
 });
+
+test('verification shows live Gmail connection state without asking paired users to connect again',async t=>{
+ let gmail={status:'connected'},busy=false;const posts=[];
+ const job={id:'fixture',company:'Fixture',title:'AI role',location:'Copenhagen',url:'https://example.test/job',stage:'verification',revision:1,blocked:false,navigation:{status:'verification',phase:'fill',sequence:1,message:'Email verification is pending.',exposed:true,verification:{kind:'email'}}};
+ const server=http.createServer(async(req,res)=>{
+  if(req.method==='POST'){posts.push(req.url);res.setHeader('Content-Type','application/json');res.end('{"queued":true}');return;}
+  if(req.url==='/api/state'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({busy:busy?{jobId:job.id,label:'Checking email'}:null,jobs:[job],history:[],settings:{navigationModel:'fixture',sources:[]},candidate:{},runtime:{status:'ready'},gmail}));return;}
+  if(req.url==='/api/jobs/fixture'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(job));return;}
+  if(req.url==='/api/models'){res.setHeader('Content-Type','application/json');res.end('[]');return;}
+  if(req.url.startsWith('/artifacts/')){res.setHeader('Content-Type','image/png');res.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jhS8AAAAASUVORK5CYII=','base64'));return;}
+  const name=req.url==='/'?'index.html':req.url.slice(1);res.setHeader('Content-Type',name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':'text/html');try{res.end((await readFile(path.join(root,name),'utf8')).replace('__CSRF__','test'));}catch{res.writeHead(404);res.end();}
+ });
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));const b=await browserSession({allowTest:true});t.after(async()=>{await b.browser.close();await new Promise(r=>server.close(r));});b.gate.approved=true;
+ const errors=[];b.page.on('pageerror',e=>errors.push(e.message));await b.page.goto(`http://127.0.0.1:${server.address().port}`);
+ const status=async label=>b.page.waitForFunction(value=>document.querySelector('#verificationGmailStatus')?.textContent===value,label);
+ await status('Gmail connected.');assert.equal(await b.page.locator('#verificationGmail').count(),0);
+ gmail={status:'reconnecting'};busy=true;await status('Reconnecting Gmail…');assert.equal(await b.page.locator('#checkVerification').isDisabled(),true);assert.equal(await b.page.locator('#verificationGmail').count(),0);
+ gmail={status:'attention'};busy=false;await status('Gmail needs attention.');assert.equal(await b.page.locator('#verificationGmail').textContent(),'Gmail settings');
+ await b.page.locator('#verificationGmail').click();assert.equal(await b.page.locator('#settings').isVisible(),true);assert.equal(await b.page.locator('#gmailStatus').evaluate(e=>e.closest('details').open),true);assert.deepEqual(posts,[]);await b.page.locator('[data-close="settings"]').click();
+ gmail={status:'closed'};await status('Gmail paired · open its companion in Chrome.');assert.equal(await b.page.locator('#verificationGmail').textContent(),'Gmail settings');
+ gmail={status:'disconnected',paired:true};await status('Gmail paired · open its companion in Chrome.');await b.page.waitForTimeout(2300);assert.equal(await b.page.locator('#verificationGmail').textContent(),'Gmail settings');
+ gmail={status:'disconnected',paired:false};await status('Gmail not connected.');assert.equal(await b.page.locator('#verificationGmail').textContent(),'Connect Gmail');
+ gmail={status:'connected',lookup:{error:'No current code'}};await status('Gmail connected · lookup needs attention.');assert.equal(await b.page.locator('#verificationGmail').textContent(),'Gmail settings');
+ assert.deepEqual(posts,[],'status changes never reconnect, retry or submit');await b.page.locator('#checkVerification').click();await b.page.waitForResponse(r=>r.url().endsWith('/api/state'));assert.deepEqual(posts,['/api/jobs/fixture/check-verification']);assert.deepEqual(errors,[]);
+});

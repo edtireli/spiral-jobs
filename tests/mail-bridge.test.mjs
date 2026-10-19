@@ -16,6 +16,9 @@ test('Chrome companion can reconcile one receipt but cannot change dashboard set
  const bridge=(route,body={},token=connection.token,origin=extensionOrigin)=>fetch(app.origin+route,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify(body)});
  assert.equal((await bridge('/api/gmail/bridge/poll',{},'wrong')).status,403);
  assert.equal((await bridge('/api/gmail/bridge/poll',{},connection.token,'https://evil.example')).status,403);
+ assert.equal(service.store.settings().gmail.bridgeExtensionId,undefined);
+ assert.equal((await bridge('/api/gmail/bridge/poll')).status,200);
+ assert.equal(service.store.settings().gmail.bridgeExtensionId,'a'.repeat(32));
  assert.equal((await bridge('/api/autonomy',{enabled:true})).status,403);
  assert.equal((await bridge('/api/gmail/bridge/auto-apply')).status,404);
  assert.equal(JSON.stringify(service.state()).includes(connection.token),false);
@@ -33,4 +36,5 @@ test('Chrome companion can reconcile one receipt but cannot change dashboard set
  await reconcile({...message,id:'receipt',subject:'Fixture Research — Data Scientist',body:'We have received your application for Data Scientist at Fixture Research.'});
  assert.equal(service.store.get(j.id).stage,'submitted');assert.equal(service.store.applications().length,1);assert.equal(service.store.blocked(j).id,history.id);assert.equal(service.store.blocked(j).emailReceipt.messageId,'receipt');assert.equal(JSON.stringify(service.store.events(j.id)).includes('12345678'),false);
  await dashboard('/api/gmail/disconnect');assert.equal((await bridge('/api/gmail/bridge/poll')).status,403);
+ assert.equal(service.store.settings().gmail.bridgeExtensionId,undefined);
 });
