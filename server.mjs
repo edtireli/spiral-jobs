@@ -58,10 +58,11 @@ export async function start({port=Number(process.env.JOB_DESK_PORT||4317),dataDi
     if(p==='/api/jobs'){await publicURL(body.url);return json(res,service.add(body));}
     if(p==='/api/history')return json(res,service.history(body));
     if(p==='/api/settings')return json(res,service.settings(body));
-    const m=p.match(/^\/api\/jobs\/([\w-]+)\/(check-application-email|check-verification|auto-apply|prepare|inspect|draft|edit|approve-fill|resume-navigation|allow-interactive|answer-navigation|approve-final|stop-navigation|prepare-letter|approve-letter|archive|apply-url)$/);assert(m,'Unknown action.',404);
+    const m=p.match(/^\/api\/jobs\/([\w-]+)\/(check-application-email|check-verification|attempt-captcha|auto-apply|prepare|inspect|draft|edit|approve-fill|resume-navigation|allow-interactive|answer-navigation|approve-final|stop-navigation|prepare-letter|approve-letter|archive|apply-url)$/);assert(m,'Unknown action.',404);
     const [,jid,action]=m;
     if(action==='check-application-email')return json(res,await service.checkApplicationEmail(jid));
     if(action==='check-verification')return json(res,await service.checkVerification(jid));
+    if(action==='attempt-captcha')return json(res,await service.attemptCaptcha(jid,body));
     if(action==='auto-apply')return json(res,await service.autoApply(jid,body.mode));
     if(action==='prepare')return json(res,await service.explore(jid,{prepare:true}));
     if(action==='inspect')return json(res,await service.explore(jid));

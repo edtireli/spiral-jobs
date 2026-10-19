@@ -127,9 +127,11 @@ function syncVerification(){
  const attention=status==='attention'||!!gmail.lookup?.error;
  const label=status==='connected'?(attention?'Gmail connected · lookup needs attention.':'Gmail connected.'):status==='reconnecting'?'Reconnecting Gmail…':status==='closed'||gmail.paired===true&&status==='disconnected'?'Gmail paired · open its companion in Chrome.':status==='setup'?'Gmail pairing is incomplete.':status==='disconnected'?'Gmail not connected.':attention?'Gmail needs attention.':'Gmail status unavailable.';
  const settings=email&&(unpaired||attention||!['connected','reconnecting'].includes(status));
- const signature=JSON.stringify([j.id,n.message,email,label,settings,unpaired,!!state.busy]);if(area.dataset.verification===signature)return;area.dataset.verification=signature;
- area.innerHTML=`<div class="callout">${esc(n.message)}</div>${email?`<p id="verificationGmailStatus" class="small" role="status">${esc(label)}</p>`:''}<button id="checkVerification" ${state.busy?'disabled':''}>Check verification / result</button>${settings?`<button id="verificationGmail">${unpaired?'Connect Gmail':'Gmail settings'}</button>`:''}`;
+ const attempting=!!n.verification?.attempting,canAttempt=!email&&n.verification?.canAttempt===true;
+ const signature=JSON.stringify([j.id,n.sequence,n.message,email,label,settings,unpaired,attempting,canAttempt,!!state.busy]);if(area.dataset.verification===signature)return;area.dataset.verification=signature;
+ area.innerHTML=`<div class="callout">${esc(n.message)}</div>${email?`<p id="verificationGmailStatus" class="small" role="status">${esc(label)}</p>`:''}${canAttempt||attempting?`<button id="attemptCaptcha" ${state.busy||attempting?'disabled':''}>Let AI handle this CAPTCHA</button>`:''}<button id="checkVerification" ${state.busy||attempting?'disabled':''}>Check verification / result</button>${settings?`<button id="verificationGmail">${unpaired?'Connect Gmail':'Gmail settings'}</button>`:''}`;
  $('#checkVerification').onclick=()=>action(`/api/jobs/${j.id}/check-verification`);
+ if($('#attemptCaptcha'))$('#attemptCaptcha').onclick=()=>{if(confirm(`Let AI attempt the CAPTCHA currently shown for ${j.company} once in this existing browser? This allows CAPTCHA interactions only; it will not submit the application again. You can stop the attempt at any time.`))action(`/api/jobs/${j.id}/attempt-captcha`,{confirm:true,sequence:n.sequence});};
  if($('#verificationGmail'))$('#verificationGmail').onclick=()=>{$('#settingsButton').click();$('#gmailStatus')?.closest('details')?.setAttribute('open','');};
 }
 function performApplicationAction(){
