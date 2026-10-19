@@ -38,6 +38,8 @@ export async function start({port=Number(process.env.JOB_DESK_PORT||4317),dataDi
     if(p==='/api/models/cancel')return json(res,runtime.cancel());
     if(p==='/api/autonomy')return json(res,await service.setAutonomy(body.enabled));
     if(p==='/api/autonomy/run')return json(res,await service.autoRun({search:body.search===true}));
+    if(p==='/api/control/pause')return json(res,service.pauseExecution(body));
+    if(p==='/api/control/resume')return json(res,service.resumeExecution(body));
     if(p==='/api/autonomy/stop')return json(res,await service.stopAutonomy());
     if(p==='/api/runtime/ollama'){assert(!service.busy,'Wait for the current task.',409);runtime.cancel();await runtime.pending;runtime.endpoint=setOllamaURL(body.endpoint);return json(res,{ok:true});}
     if(p==='/api/scan')return json(res,await service.scan());
@@ -95,7 +97,7 @@ export async function start({port=Number(process.env.JOB_DESK_PORT||4317),dataDi
     res.writeHead(200,{...headers,'Content-Length':bytes.length});return res.end(bytes);
    }
    if(p==='/'){let html=await readFile(path.join(root,'public/index.html'),'utf8');html=html.replace('__CSRF__',csrf);res.writeHead(200,{'Content-Type':'text/html','Cache-Control':'no-store'});return res.end(html);}
-   const files={'/app.js':'text/javascript','/workflow.js':'text/javascript','/view-state.js':'text/javascript','/style.css':'text/css','/background.js':'text/javascript'};assert(files[p],'Not found.',404);res.writeHead(200,{'Content-Type':files[p],'Cache-Control':'no-store'});res.end(await readFile(path.join(root,'public',p.slice(1))));
+   const files={'/execution.js':'text/javascript','/app.js':'text/javascript','/workflow.js':'text/javascript','/view-state.js':'text/javascript','/style.css':'text/css','/background.js':'text/javascript'};assert(files[p],'Not found.',404);res.writeHead(200,{'Content-Type':files[p],'Cache-Control':'no-store'});res.end(await readFile(path.join(root,'public',p.slice(1))));
   }catch(e){json(res,{error:e.message},e.status||500);}
  });
  const listen=p=>new Promise((resolve,reject)=>{const fail=e=>{server.off('listening',ready);reject(e);};const ready=()=>{server.off('error',fail);resolve();};server.once('error',fail);server.once('listening',ready);server.listen(p,'127.0.0.1');});

@@ -6,7 +6,7 @@
 
 **Your experience. Local models. Applications you can follow.**
 
-A small macOS workspace for finding Denmark roles, preparing English documents from your actual CV, and navigating application websites with a local vision model. Watch the browser, inspect the model's decisions, and keep a recording of each attempt.
+A small macOS workspace for finding Denmark roles, preparing English documents from your actual CV, and navigating application websites with a local vision model. Watch the browser, pause when you need to, and keep a recording of each attempt.
 
 [Download for Mac](https://github.com/edtireli/spiral-jobs/releases/latest) · [Interactive demo](https://edtireli.github.io/spiral-jobs/) · [Watch the video](https://edtireli.github.io/spiral-jobs/demo.mp4)
 
@@ -20,8 +20,8 @@ A small macOS workspace for finding Denmark roles, preparing English documents f
 - **Read:** scroll through listings and retain screenshots and text beyond the first viewport.
 - **Prepare:** use the CV as evidence, make small profile changes, and write a short application letter when required. Compile editable LaTeX into PDFs.
 - **Navigate:** use screenshots plus observed page controls to plan clicks, fill fields, attach the right PDFs and advance through forms.
-- **Review:** see live browser images, expandable model output where the chosen model emits it, action explanations, artifacts and screen recordings.
-- **Submit:** use separate filling and submission approvals, or explicitly enable Auto apply and start a run. Stop is always available. Job collection alone never submits.
+- **Follow:** a red frame and **AI in control** badge show when automation owns the workflow. The red **AI** cursor points to the real browser targets, in the live view and recordings. Expand model output when you want more detail.
+- **Submit:** use separate filling and submission approvals, or explicitly enable Auto apply and start a run. **Pause AI** holds the current session; **Stop** ends it. Job collection alone never submits.
 - **Remember:** maintain one application per employer. Record position, location, postcode, address and deadline when listed. A submission without a receipt stays **uncertain** and blocks another attempt.
 
 Optional Gmail access looks only for verification messages relevant to the active application, in a separate signed-in browser profile. Optional tracked project links show visits privately in the app. Neither feature is required.
@@ -36,6 +36,12 @@ The downloadable build is for **Apple Silicon, macOS 14+**. It includes Node, Ch
 4. Choose your roles, topics and Denmark locations in **Interests**. Click **Find jobs**, choose a role, and prepare the application. Review documents and answers before your first live run.
 
 The app starts its local server and Ollama when needed, discovers a free local port, and reconnects to its own workspace. Data is stored in `~/Library/Application Support/Spiral Jobs/data`. Nothing in a fresh installation is prefilled with the author's personal information.
+
+### Pause without losing your place
+
+**Pause AI** is always visible while an application task is running. If a browser action, model request or compilation is already underway, the indicator says **Pausing…** until that step finishes. No subsequent fill, upload, navigation or submit action starts once the run reaches its pause point. **Resume AI** continues the same session and queue; it does not restart the application.
+
+Pausing cannot recall a request already sent to an employer. If the final submit click happened first, resuming only checks that submission's result. **Stop** closes the browser, keeps the recording, and preserves duplicate protection for exposed or uncertain attempts. A lost dashboard connection is shown explicitly; it does not mean the run is paused.
 
 ### Bring your models
 
@@ -75,6 +81,7 @@ flowchart LR
 | `lib/sources.mjs` | Job board adapters and Denmark filtering |
 | `lib/model.mjs`, `lib/answer-evidence.mjs` | Drafts, factual grounding and answer verification |
 | `lib/navigator.mjs`, `lib/navigation-service.mjs` | Observations, constrained actions, live progress |
+| `lib/execution-control.mjs`, `lib/browser-control.mjs` | Pause/resume boundaries, control indicators and actual action targets |
 | `lib/documents.mjs`, `templates/` | Minimal CV edits, LaTeX layouts and PDF rendering |
 | `lib/store.mjs`, `lib/autonomy.mjs` | Durable history, duplicate protection and automatic runs |
 | `lib/mail.mjs`, `lib/email-verification.mjs` | Isolated Gmail verification and pending form handling |
@@ -99,7 +106,7 @@ npm run audit:privacy
 npm run demo
 ```
 
-Tests exercise controlled local fixtures, approval boundaries, evidence checks, changed attachments, one-shot submission, uncertain outcomes, form navigation, scrolling state, email verification and tracking. They do not submit real applications or evaluate model accuracy across live sites. The CI badge reports the actual workflow state.
+Tests exercise controlled local fixtures, approval boundaries, evidence checks, changed attachments, one-shot submission, uncertain outcomes, form navigation, scrolling state, pause/resume before and after submission, email verification and tracking. They do not submit real applications or evaluate model accuracy across live sites. The CI badge reports the actual workflow state.
 
 Build instructions: [desktop/BUILD.md](desktop/BUILD.md). Optional free hosted tracking: [tracking/README.md](tracking/README.md). Security and privacy: [SECURITY.md](SECURITY.md).
 

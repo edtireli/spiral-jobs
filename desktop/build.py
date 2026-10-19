@@ -52,7 +52,7 @@ shutil.copytree(root / 'desktop/licenses', resources / 'licenses')
 info = {
     'CFBundleExecutable': 'SpiralJobs', 'CFBundleIdentifier': 'dk.edtireli.spiraljobs',
     'CFBundleName': 'Spiral Jobs', 'CFBundleDisplayName': 'Spiral Jobs',
-    'CFBundlePackageType': 'APPL', 'CFBundleShortVersionString': version, 'CFBundleVersion': '1',
+    'CFBundlePackageType': 'APPL', 'CFBundleShortVersionString': version, 'CFBundleVersion': version,
     'CFBundleIconFile': 'SpiralJobs', 'LSMinimumSystemVersion': '14.0',
     'NSHighResolutionCapable': True, 'NSPrincipalClass': 'NSApplication',
     'NSAppTransportSecurity': {'NSAllowsLocalNetworking': True},

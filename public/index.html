@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="__CSRF__"><meta name="color-scheme" content="dark"><title>Spiral Jobs</title><link rel="stylesheet" href="/style.css"></head>
-<body>
+<body data-ai-control="idle">
 <canvas id="field" aria-hidden="true"></canvas>
+<div id="aiControlFrame" aria-hidden="true"></div><section id="aiControlBar" aria-label="AI application controls" hidden><span class="ai-control-dot" aria-hidden="true"></span><strong id="aiControlTitle" role="status">AI in control</strong><span id="aiControlActivity"></span><button id="pauseAI" type="button">Pause AI</button></section>
 <header><a class="identity" href="/" aria-label="Spiral Jobs home"><canvas id="mark" width="64" height="64" aria-hidden="true"></canvas><span>spiral jobs</span></a><div class="header-actions"><button id="interestsButton" class="quiet">interests</button><button id="profileButton" class="quiet">profile</button><button id="settingsButton" class="quiet">settings</button><button id="addButton" class="quiet">add job</button><button id="scanButton" class="quiet">find jobs ↗</button><button id="autoApplyButton" class="quiet" hidden>auto apply ↗</button><button id="stopAutoButton" class="quiet" hidden>stop</button></div></header>
 <main>
 <div id="activity" class="activity" hidden></div><div id="notice" class="notice" role="status" hidden></div>

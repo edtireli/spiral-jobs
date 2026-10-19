@@ -23,7 +23,7 @@ async function fixture(t,html){
  }});
  const add=(company,route='/')=>service.store.add({company,title:'Data Scientist',location:'Copenhagen',score:80,url:`http://127.0.0.1:${site.address().port}${route}`}).job;
  const post=(route,body={})=>fetch(app.origin+route,{method:'POST',headers:{Origin:app.origin,'Content-Type':'application/json','X-Job-Desk-Token':app.csrf},body:JSON.stringify(body)});
- return {service,posts,add,post};
+ return {service,posts,add,post,origin:app.origin};
 }
 const basic=`<form method=post action=/send enctype=multipart/form-data><label>Email<input type=email name=email required></label><label>Resume<input type=file name=cv required></label><button type=submit>Submit application</button></form>`;
 
@@ -115,4 +115,91 @@ test('Lever-style labels and yes/no checkbox groups use confirmed facts and reco
  await f.service.setAutonomy(true);await f.service.autoApply(j.id);await f.service.running;
  const done=f.service.store.get(j.id);assert.equal(done.stage,'submitted',done.automatic?.reason);assert.equal(f.posts.length,1);
  const body=new URLSearchParams(f.posts[0].body);assert.deepEqual(body.getAll('permit'),['Yes']);assert.equal(body.get('english'),'Native');assert.equal(body.get('relocation'),'I already live in Copenhagen.');assert.equal(body.get('source'),'Job Board');assert.equal(body.has('marketing'),false);assert.equal(f.service.store.blocked(done).status,'submitted');
+});
+
+async function until(check,message){const end=Date.now()+15000;while(Date.now()<end){if(await check())return;await new Promise(r=>setTimeout(r,30));}throw Error(message);}
+
+test('pause during planning holds before rendering or exposure; resume finishes the same application',async t=>{
+ const f=await fixture(t,()=>basic),j=f.add('Pause Planning');let ready,finish;
+ const started=new Promise(r=>ready=r),model=new Promise(r=>finish=r),propose=f.service.proposeFn;let rendered=0;
+ const render=f.service.renderDocumentsFn;f.service.renderDocumentsFn=async args=>{rendered++;return render(args);};
+ f.service.proposeFn=async args=>{ready();await model;return propose(args);};
+ await f.service.setAutonomy(true);await f.service.autoApply(j.id);await started;
+ const runId=f.service.busy.id;
+ assert.equal((await f.post('/api/control/pause',{runId:'stale'})).status,409);
+ assert.equal((await f.post('/api/control/pause',{runId})).status,200);
+ assert.equal(f.service.executionState().status,'pausing');finish();
+ await until(()=>f.service.executionState()?.status==='paused','Run did not pause');
+ assert.equal(rendered,0);assert.equal(f.posts.length,0);assert.equal(f.service.session(j.id).exposed,false);
+ assert.equal((await f.post('/api/control/resume',{runId})).status,200);await f.service.running;
+ assert.equal(f.posts.length,1);assert.equal(f.service.store.get(j.id).stage,'submitted');assert.equal(f.service.executionState(),null);
+ assert.equal((await f.post('/api/control/resume',{runId})).status,409);
+});
+
+test('pause after filling holds uploads, shows the real target cursor, and resumes without refilling',async t=>{
+ const f=await fixture(t,()=>basic),j=f.add('Pause After Field'),create=f.service.createNavigator;
+ let filled=0,paused=false;
+ f.service.createNavigator=options=>{const n=create({...options,onEvent:(action,detail)=>{options.onEvent(action,detail);if(action==='field_filled'&&detail.label==='Email'){filled++;if(!paused){paused=true;f.service.pauseExecution({runId:f.service.busy.id});}}}});return n;};
+ await f.service.setAutonomy(true);await f.service.autoApply(j.id);
+ await until(()=>f.service.executionState()?.status==='paused','Filling did not pause');
+ const n=f.service.session(j.id);assert.equal(n.closed,false);assert.equal(await n.page.locator('[name=email]').inputValue(),profile.email);
+ assert.equal(await n.page.locator('[name=cv]').evaluate(e=>e.files.length),0);assert.equal(f.posts.length,0);
+ assert.ok(n.cursor?.x>0&&n.cursor?.y>0);assert.equal(await n.page.locator('[data-spiral-control]').count(),1);
+ const observed=await (await import('../lib/navigator.mjs')).observe(n.page);assert.ok(!observed.snapshot.text.includes('AI paused'),'Overlay must not become model evidence');
+ await f.post('/api/control/resume',{runId:f.service.busy.id});await f.service.running;
+ assert.equal(filled,1);assert.equal(f.posts.length,1);assert.equal(f.service.store.applications().length,1);
+});
+
+test('stop while paused cannot resume or move on to the next employer',async t=>{
+ const f=await fixture(t,()=>basic);const first=f.add('Pause Then Stop');f.add('Must Not Start','/next');let renders=0;
+ const render=f.service.renderDocumentsFn;
+ f.service.renderDocumentsFn=async args=>{renders++;const out=await render(args);f.service.pauseExecution({runId:f.service.busy.id});return out;};
+ await f.service.setAutonomy(true);await f.service.autoRun();await until(()=>f.service.executionState()?.status==='paused','Preparation did not pause');
+ const runId=f.service.busy.id;await f.service.stopAutonomy();await f.service.running;
+ assert.equal(renders,1);assert.equal(f.posts.length,0);assert.equal(f.service.autoBatch.running,false);assert.equal((await f.post('/api/control/resume',{runId})).status,409);
+ assert.notEqual(f.service.store.get(first.id).stage,'submitted');
+});
+
+test('dashboard pause controls the real executor and releases AI ownership after the receipt',async t=>{
+ const f=await fixture(t,()=>basic),j=f.add('Control Preview'),create=f.service.createNavigator;let ready,finish;
+ const deciding=new Promise(r=>ready=r),release=new Promise(r=>finish=r);
+ f.service.createNavigator=options=>{const n=create(options),decide=n.decide;n.decide=async args=>{ready();await Promise.race([release,new Promise((_,reject)=>args.signal.addEventListener('abort',()=>reject(Error('Stopped')),{once:true}))]);return decide(args);};return n;};
+ await f.service.setAutonomy(true);await f.service.autoApply(j.id);await deciding;
+ const {browserSession}=await import('../lib/browser.mjs'),b=await browserSession({allowTest:true,headless:true});b.gate.approved=true;t.after(()=>b.browser.close());
+ await b.page.goto(f.origin);await b.page.getByRole('button',{name:'Pause AI',exact:true}).waitFor();
+ assert.equal(await b.page.locator('body').getAttribute('data-ai-control'),'active');
+ await mkdir(path.resolve('.cache'),{recursive:true});await b.page.screenshot({path:path.resolve('.cache/app-ai-active.png')});
+ await b.page.locator('#profileButton').click();await b.page.locator('dialog[open] #pauseAI').waitFor();
+ await b.page.getByRole('button',{name:'Pause AI',exact:true}).click();await until(()=>f.service.executionState()?.status==='pausing','Pause was not received');finish();
+ await b.page.getByRole('button',{name:'Resume AI',exact:true}).waitFor();
+ assert.equal(f.service.executionState().status,'paused');assert.equal(f.posts.length,0);
+ await b.page.locator('dialog[open] [data-close]').click();await b.page.screenshot({path:path.resolve('.cache/app-ai-paused.png')});
+ await b.page.getByRole('button',{name:'Resume AI',exact:true}).click();await f.service.running;
+ await b.page.waitForFunction(()=>document.querySelector('#aiControlBar').hidden);
+ assert.equal(f.posts.length,1);assert.equal(await b.page.locator('body').getAttribute('data-ai-control'),'idle');
+});
+
+test('a changed final form during pause blocks sending',async t=>{
+ const f=await fixture(t,()=>basic),j=f.add('Changed While Paused'),create=f.service.createNavigator;
+ f.service.createNavigator=options=>{const n=create(options),before=n.beforeAction.bind(n);let held=false;n.beforeAction=async locator=>{if(n.final&&!n.finalClicked&&!held){held=true;f.service.pauseExecution({runId:f.service.busy.id});}return before(locator);};return n;};
+ await f.service.setAutonomy(true);await f.service.autoApply(j.id);await until(()=>f.service.executionState()?.status==='paused','Final click did not pause');
+ const n=f.service.session(j.id);await n.page.locator('[name=email]').fill('changed@example.test');await f.post('/api/control/resume',{runId:f.service.busy.id});await f.service.running;
+ assert.equal(f.posts.length,0);assert.match(f.service.store.get(j.id).automatic.reason,/changed while paused/);
+});
+
+test('pausing after the final click resumes receipt checking without resubmission',async t=>{
+ const f=await fixture(t,()=>basic),j=f.add('Pause Receipt'),create=f.service.createNavigator;
+ f.service.createNavigator=options=>{const n=create(options),receipt=n.waitForReceipt.bind(n);n.waitForReceipt=async args=>{f.service.pauseExecution({runId:f.service.busy.id});return receipt(args);};return n;};
+ await f.service.setAutonomy(true);await f.service.autoApply(j.id);await until(()=>f.service.executionState()?.status==='paused','Receipt check did not pause');
+ assert.equal(f.posts.length,1);assert.equal(f.service.session(j.id).finalClicked,true);
+ await f.post('/api/control/resume',{runId:f.service.busy.id});await f.service.running;
+ assert.equal(f.posts.length,1);assert.equal(f.service.store.get(j.id).stage,'submitted');
+});
+
+test('changed attachments during a final pause invalidate sending',async t=>{
+ const f=await fixture(t,()=>basic),j=f.add('Attachment Changed During Pause'),create=f.service.createNavigator;
+ f.service.createNavigator=options=>{const n=create(options),before=n.beforeAction.bind(n);let held=false;n.beforeAction=async locator=>{if(n.final&&!n.finalClicked&&!held){held=true;f.service.pauseExecution({runId:f.service.busy.id});}return before(locator);};return n;};
+ await f.service.setAutonomy(true);await f.service.autoApply(j.id);await until(()=>f.service.executionState()?.status==='paused','Final click did not pause');
+ await writeFile(f.service.session(j.id).artifacts.cv,'changed while paused');await f.post('/api/control/resume',{runId:f.service.busy.id});await f.service.running;
+ assert.equal(f.posts.length,0);assert.match(f.service.store.get(j.id).automatic.reason,/attachment changed/);
 });

@@ -15,3 +15,12 @@
 .live-layout{grid-template-columns:minmax(0,1.7fr) minmax(260px,1fr)}.agent-sidebar{min-width:0;position:sticky;top:0}.live-layout .agent-activity{height:auto;max-height:165px}.agent-sidebar #thinkingPanel{margin-top:14px;padding-top:14px}.agent-sidebar #thinkingRuns{max-height:560px;overflow:auto;overflow-anchor:none}.agent-sidebar .thinking-text{font-size:11px;max-height:390px;padding:12px}.recordings video{display:block;width:100%;min-width:240px;max-height:650px;background:#000;border:1px solid #333}.recordings{min-width:250px}@media(max-width:1050px){.live-layout{grid-template-columns:minmax(0,1fr)}.agent-sidebar{position:static}.agent-sidebar #thinkingRuns{max-height:400px}}
 
 #emptyInterests{margin-top:14px}
+
+/* The pointer in the live capture belongs to the browser agent, never the user. */
+#aiControlFrame{position:fixed;inset:5px;z-index:80;pointer-events:none;border:1.5px solid #e7696280;border-radius:12px;box-shadow:inset 0 0 28px #e7696212,0 0 12px #e7696210;opacity:0;transition:opacity .2s ease}
+body[data-ai-control]:not([data-ai-control="idle"]) #aiControlFrame{opacity:1}body[data-ai-control="paused"] #aiControlFrame{opacity:.4}
+#aiControlBar{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:81;display:flex;align-items:center;gap:10px;padding:6px 7px 6px 15px;border:1px solid #e7696255;border-radius:30px;background:#160d0cf5;box-shadow:0 4px 30px #0009;color:#e9948d;font:11px ui-monospace,monospace;max-width:calc(100vw - 30px);white-space:nowrap}
+#aiControlBar strong{font-weight:500}#aiControlActivity{border-left:1px solid #e7696233;padding-left:10px;color:#b1918e;font-size:10px;overflow:hidden;text-overflow:ellipsis;max-width:38vw}.ai-control-dot{width:5px;height:5px;border-radius:50%;background:#ed7c72;flex-shrink:0}
+#pauseAI{background:#3b1c19;border:1px solid #e7696266;border-radius:20px;color:#ffb1a8;padding:8px 13px;font:10px ui-monospace,monospace;flex-shrink:0}#pauseAI:disabled{opacity:.55}body[data-ai-control]:not([data-ai-control="idle"]) #runtimeStatus{visibility:hidden}
+@media(max-width:600px){#aiControlBar{font-size:10px;gap:8px}#aiControlActivity{max-width:24vw;font-size:9px}#aiControlFrame{inset:3px;border-radius:8px}}
+@media(prefers-reduced-motion:reduce){#aiControlFrame{transition:none}}
