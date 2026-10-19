@@ -26,7 +26,7 @@ test('drag schema requires its target and exact repair feedback fixes missing ta
  const scene={surfaces:[{target:'s0',kind:'image',x:10,y:10,width:700,height:700}],buttons:[]},drag={action:'drag',from:{x:100,y:100},to:{x:500,y:500},reason:'One object matches this outline.'},calls=[];
  const schema=captchaSchema(scene);assert.deepEqual(schema.oneOf.find(b=>b.properties.action.enum[0]==='drag').required,['action','target','reason','from','to']);
  const result=await captchaDecision({model:'fixture',shot:Buffer.from('fixture'),scene,info:{capabilities:['vision']},chat:async body=>{calls.push(body);return {message:{content:JSON.stringify(calls.length===1?drag:{...drag,target:'s0'})}};}});
- assert.equal(result.target,'s0');assert.equal(calls.length,2);assert.match(calls[1].messages.at(-1).content,/Missing required target/);assert.match(calls[1].messages.at(-1).content,/No browser action occurred/);
+ assert.equal(result.target,'s0');assert.equal(calls.length,2);assert.equal(calls[0].think,false);assert.equal(calls[1].options.num_ctx,8192);assert.match(calls[1].messages.at(-1).content,/Missing required target/);assert.match(calls[1].messages.at(-1).content,/No browser action occurred/);
 });
 test('one explicitly confirmed drag and Verify preserves the original submission without replaying Submit',{timeout:30000},async t=>{
  let calls=0;const {n,events}=await fixture(t,async({scene})=>++calls===1?{action:'drag',target:'s0',from:point(scene.surfaces[0],.1,.2),to:point(scene.surfaces[0],.7,.6),reason:'Square matches its outline'}:{action:'verify',target:scene.buttons[0].target,reason:'The puzzle has been arranged'});
