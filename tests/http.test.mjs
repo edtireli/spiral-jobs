@@ -1,0 +1,22 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,rm,mkdir,writeFile} from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import {start} from '../server.mjs';
+test('HTTP API requires same-origin manual actions and a dashboard token',async t=>{
+ const dir=await mkdtemp(path.join(os.tmpdir(),'job-desk-http-'));const app=await start({port:49437,dataDir:dir});
+ t.after(async()=>{await new Promise(r=>app.server.close(r));app.service.store.close();await rm(dir,{recursive:true,force:true});});
+ const post=headers=>fetch(app.origin+'/api/history',{method:'POST',headers:{'Content-Type':'application/json',...headers},body:'{"company":"Test Company"}'});
+ assert.equal((await post({})).status,403);
+ assert.equal((await post({Origin:'https://employer.example','X-Job-Desk-Token':app.csrf})).status,403);
+ assert.equal((await post({Origin:app.origin,'X-Job-Desk-Token':'wrong'})).status,403);
+ assert.equal(app.service.store.applications().length,0);
+ assert.equal((await post({Origin:app.origin,'X-Job-Desk-Token':app.csrf})).status,200);
+ assert.equal((await post({Origin:app.origin,'X-Job-Desk-Token':app.csrf})).status,409);
+ const unknown=await fetch(app.origin+'/artifacts/fake/r1/CV.pdf');assert.equal(unknown.status,404);
+ await mkdir(path.join(dir,'artifacts','fixture'),{recursive:true});await writeFile(path.join(dir,'artifacts','fixture','recording.webm'),Buffer.from('0123456789'));
+ const clip=await fetch(app.origin+'/artifacts/fixture/recording.webm',{headers:{Range:'bytes=2-5'}});assert.equal(clip.status,206);assert.equal(clip.headers.get('content-range'),'bytes 2-5/10');assert.equal(await clip.text(),'2345');
+ const invalid=await fetch(app.origin+'/artifacts/fixture/recording.webm',{headers:{Range:'bytes=10-12'}});assert.equal(invalid.status,416);
+ const html=await(await fetch(app.origin)).text();assert.ok(html.includes(app.csrf));
+});

@@ -1,0 +1,16 @@
+node_modules/
+data/
+verification/
+dist/
+.cache/
+.private/
+.env*
+!.env.example
+*.sqlite*
+*.log
+.DS_Store
+desktop/config.json
+tracking/.dev.vars
+tracking/.wrangler/
+tracking/wrangler.local.json
+__pycache__/

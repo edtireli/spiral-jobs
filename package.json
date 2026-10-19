@@ -1,0 +1,21 @@
+{
+  "name": "spiral-jobs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test --test-concurrency=2 tests/*.test.mjs",
+    "demo": "node scripts/demo-server.mjs",
+    "audit:privacy": "node scripts/privacy-audit.mjs",
+    "build:mac": "python3 desktop/build.py"
+  },
+  "dependencies": {
+    "playwright": "1.62.1"
+  },
+  "description": "Local AI job applications with visible browser actions and evidence-grounded documents",
+  "license": "MIT"
+}

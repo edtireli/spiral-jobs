@@ -1,0 +1,1 @@
+{"name":"spiral-jobs-tracking","private":true,"type":"module","scripts":{"deploy":"wrangler deploy --config wrangler.local.json"},"devDependencies":{"wrangler":"^4.151.1"}}

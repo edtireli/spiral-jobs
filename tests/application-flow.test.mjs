@@ -1,0 +1,62 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import http from 'node:http';
+import path from 'node:path';
+import os from 'node:os';
+import {mkdtemp,mkdir,writeFile,readFile,rm} from 'node:fs/promises';
+import {start} from '../server.mjs';
+import {Navigator} from '../lib/navigator.mjs';
+import {hash} from '../lib/core.mjs';
+import {applicationAction} from '../public/workflow.js';
+
+const profile={name:'Fixture Person',firstName:'Fixture',lastName:'Person',email:'fixture@example.test',profile:'Fixture CV',facts:[],unknowns:[]};
+test('old drafts reconnect; a paused preparation resumes through upload and one approved submission',async t=>{
+ const dir=await mkdtemp(path.join(os.tmpdir(),'job-desk-application-'));const posts=[];let reads=0;
+ const fixture=http.createServer(async(req,res)=>{
+  let body='';for await(const data of req)body+=data;
+  res.setHeader('Content-Type','text/html');
+  if(req.method==='POST'){posts.push({url:req.url,body});res.end('Thank you for your application');return;}
+  if(req.url==='/apply')res.end(`<form method=post action=/send enctype=multipart/form-data><label>Email<input type=email name=email required></label><label>Resume<input type=file name=cv required></label><button type=submit>Submit application</button></form>`);
+  else res.end(`<h1>Fixture AI role</h1><p>Python research pipelines.</p><a href=/apply>Apply now</a><script type="application/ld+json">{"@type":"JobPosting","title":"AI Engineer","validThrough":"2026-12-01","jobLocation":{"address":{"postalCode":"2100","streetAddress":"Fixture Street 4","addressLocality":"Copenhagen"}}}</script>`);
+ });
+ await new Promise(r=>fixture.listen(0,'127.0.0.1',r));
+ const app=await start({port:0,dataDir:dir}),service=app.service;
+ t.after(async()=>{for(const n of service.navigators?.values()||[])await n.close();await new Promise(r=>app.server.close(r));service.store.close();await new Promise(r=>fixture.close(r));await rm(dir,{recursive:true,force:true});});
+ service.store.set('profile',profile);service.store.set('model','fixture');
+ service.createNavigator=options=>new Navigator({...options,allowTest:true,headless:true,decide:async({observation,phase})=>{
+  if(phase==='inspect'&&reads++===0)return {action:'human',reason:'Fixture pause to verify resume.'};
+  const c=observation.controls.find(c=>phase==='inspect'?c.label==='Apply now':c.label==='Submit application');return {action:phase==='inspect'?'click':'final',target:c.target,reason:phase==='inspect'?'Open the application form.':'Ready for final review.'};
+ }});
+ let proposals=0;
+ service.proposeFn=async({job,onProgress})=>{proposals++;assert.ok(job.listing.complete);assert.match(job.listing.text,/Python research/);onProgress('Read the full listing; matching CV evidence.',{id:'fixture-thinking',model:'fixture',thinking:'Local model reasoning text',content:'{}',done:true});return {model:'fixture',fit:'Fixture fit',evidenceIds:[],coverLetter:''};};
+ service.renderDocumentsFn=async({dir})=>{await mkdir(dir,{recursive:true});const cv=path.join(dir,'CV.pdf');await writeFile(cv,'%PDF fixture reviewed CV');return {cv,letter:null,hashes:{cv:hash(await readFile(cv)),letter:null}};};
+ const job=service.store.add({company:'Fixture Only',title:'AI Engineer',location:'Copenhagen',url:`http://127.0.0.1:${fixture.address().port}`}).job;
+ job.stage='ready';job.draft={snapshot:{navigation:false,reason:'Old read-only screenshot'},reviewHash:'old'};service.store.save(job);
+ assert.equal(applicationAction(job).action,'prepare');
+ const post=(action,body={})=>fetch(app.origin+`/api/jobs/${job.id}/${action}`,{method:'POST',headers:{Origin:app.origin,'Content-Type':'application/json','X-Job-Desk-Token':app.csrf},body:JSON.stringify(body)});
+ assert.equal((await post('approve-fill',{})).status,409);
+ assert.equal((await post('prepare')).status,200);await service.running;
+ let j=service.store.get(job.id);assert.equal(j.navigation.status,'human');assert.equal(posts.length,0);assert.equal(proposals,0);
+ assert.equal((await post('resume-navigation')).status,200);await service.running;
+ j=service.store.get(job.id);assert.equal(j.stage,'ready',j.error);assert.equal(j.draft.snapshot.navigation,true);assert.equal(proposals,1);assert.equal(posts.length,0);
+ assert.equal(j.reasoning[0].thinking,'Local model reasoning text','transcript survives document rendering');assert.equal(j.navigation.modelRun.thinking,undefined,'navigation state contains only progress metadata');assert.equal(service.state().jobs[0].reasoning,undefined,'full transcripts are only returned in job detail');
+ assert.equal(applicationAction(j).action,'approve');
+ const oldRevision=j.revision;
+ assert.equal((await post('prepare')).status,200);await service.running;
+ j=service.store.get(job.id);assert.equal(j.stage,'ready',j.error);assert.equal(proposals,1,'unchanged fully read listing reuses the prepared CV');assert.ok(j.revision>oldRevision);
+ assert.equal(j.reasoning[0].thinking,'Local model reasoning text','transcript survives reopening');
+ const approval={confirm:true,revision:j.revision,reviewHash:j.draft.reviewHash};
+ assert.equal((await post('approve-fill',approval)).status,200);await service.running;
+ j=service.store.get(job.id);assert.equal(j.navigation.status,'final_review',j.navigation.message);assert.equal(posts.length,0);
+ assert.equal(await service.session(job.id).page.locator('[name=email]').inputValue(),profile.email);
+ assert.equal(await service.session(job.id).page.locator('[name=cv]').evaluate(e=>e.files[0].name),'CV.pdf');
+ assert.ok(j.navigation.activity.some(e=>e.message==='Attaching CV.pdf'));
+ assert.match(applicationAction(j).label,/submit/);
+ assert.equal((await post('approve-final',{})).status,409);assert.equal(posts.length,0);
+ const final={confirm:true,key:j.navigation.finalReview.key};
+ assert.equal((await post('approve-final',final)).status,200);await service.running;
+ j=service.store.get(job.id);assert.equal(j.navigation.status,'submitted');assert.equal(posts.length,1);assert.match(posts[0].body,/%PDF fixture reviewed CV/);assert.match(posts[0].body,/fixture@example.test/);
+ assert.equal((await post('approve-final',final)).status,409);assert.equal(posts.length,1);
+ const record=service.store.blocked(j);assert.equal(record.status,'submitted');assert.equal(record.postcode,'2100');assert.equal(record.address,'Fixture Street 4');assert.equal(record.deadline,'2026-12-01');
+ assert.ok(j.navigation.activity.some(e=>/Reusing your CV/.test(e.message)));
+});

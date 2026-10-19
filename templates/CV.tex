@@ -1,0 +1,32 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[a4paper,margin=24mm]{geometry}
+\usepackage{fontspec}\setsansfont{lmsans10-regular.otf}[BoldFont=lmsans10-bold.otf,ItalicFont=lmsans10-oblique.otf,BoldItalicFont=lmsans10-boldoblique.otf]\usepackage{parskip}\usepackage{xcolor}\usepackage{tikz}\usepackage{eso-pic}\usepackage{hyperref}
+\renewcommand{\familydefault}{\sfdefault}
+\definecolor{paper}{HTML}{080808}\definecolor{ink}{HTML}{F2F2F2}\definecolor{muted}{HTML}{AAAAAA}
+\pagecolor{paper}\color{ink}\hypersetup{colorlinks=true,urlcolor=ink,pdfauthor={Alex Jensen},pdftitle={Curriculum Vitae}}
+\setlength{\emergencystretch}{3em}\setlength{\parskip}{8pt}\pagestyle{empty}
+\AddToShipoutPictureBG{\begin{tikzpicture}[remember picture,overlay]\foreach \r in {1,...,12}{\draw[ink!4!paper,line width=.3pt] ([xshift=-10mm,yshift=-10mm]current page.north east) circle (\r*8mm);}\end{tikzpicture}}
+\begin{document}
+{\fontsize{29}{32}\selectfont Alex Jensen}\par
+{\small\color{muted}alex.jensen@example.com | +45 00 00 00 00 | Copenhagen, Denmark}\par
+\vspace{2mm}\hrule\vspace{6mm}
+{\small\color{muted}CURRICULUM VITAE}\par
+Computational biology researcher working with Python, medical data and machine learning.\par
+\vspace{3mm}
+EDUCATION\\
+PhD in Computational Biology · Example University · 2026\\
+MSc in Applied Mathematics · Example University · 2022
+
+\vspace{2mm}
+RESEARCH \& SOFTWARE\\
+Built reproducible Python pipelines for a fictional microscopy research project. Trained and evaluated image classifiers using held-out research data. Developed a small local document search application.
+
+\vspace{2mm}
+TOOLS\\
+Python · PyTorch · pandas · SQL · Git · Linux
+
+\vspace{2mm}
+LANGUAGES\\
+English · Danish
+\vfill\vspace{8mm}\noindent\colorbox{paper!88!ink}{\parbox{\dimexpr\linewidth-2\fboxsep\relax}{\small\color{muted}Prepared using Spiral Jobs, a local AI application pipeline. \href{https://github.com/edtireli/spiral-jobs}{Source \& demo}.}}
+\end{document}

@@ -1,0 +1,2 @@
+// Progress ticks must not rebuild previews, form inputs or expanded transcripts.
+export function detailKey(j){return JSON.stringify({id:j.id,revision:j.revision,stage:j.stage,blocked:!!j.blocked,error:j.error,status:j.navigation?.status,phase:j.navigation?.phase,automatic:j.navigation?.automatic,question:j.navigation?.question?.key,final:j.navigation?.finalReview?.key,interactive:j.navigation?.interactiveEnabled,sections:j.listing?.sections?.length,complete:j.listing?.complete,recordings:j.recordings?.length});}
