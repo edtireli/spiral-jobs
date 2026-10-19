@@ -12,7 +12,7 @@ A small macOS workspace for finding Denmark roles, preparing English documents f
 
 [![Fictional, scripted walkthrough of Spiral Jobs](docs/poster.png)](https://edtireli.github.io/spiral-jobs/)
 
-*The demonstration is a scripted simulation with fictional people and employers. It illustrates the workflow; it is not footage of an autonomous application or a model performance benchmark.*
+*The demonstration is a scripted simulation with fictional employers, Edis Tireli’s professional CV excerpt and placeholder contact details. It illustrates the workflow; it is not footage of an autonomous application or a model performance benchmark.*
 
 ## What it does
 

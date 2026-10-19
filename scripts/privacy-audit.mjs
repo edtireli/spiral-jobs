@@ -1,12 +1,16 @@
 import {readdir,readFile} from 'node:fs/promises';
 import path from 'node:path';
+import {execFileSync} from 'node:child_process';
 const root=path.resolve(import.meta.dirname,'..');
 const excluded=new Set(['.git','node_modules','data','dist','.cache','.private','verification','.wrangler','__pycache__']);
 const problems=[];
+const publishable=new Set(execFileSync('git',['ls-files','--cached','--others','--exclude-standard','-z'],{cwd:root,encoding:'utf8'}).split('\0').filter(Boolean));
+for(const name of publishable)if(/^(?:data|verification|dist|\.private|\.cache|node_modules)\//.test(name))problems.push(name+': private/generated directory is tracked');
 async function walk(dir){for(const item of await readdir(dir,{withFileTypes:true})){
  if(excluded.has(item.name))continue;
  const file=path.join(dir,item.name),relative=path.relative(root,file);
  if(item.isDirectory()){await walk(file);continue;}
+ if(!publishable.has(relative))continue;
  if(item.isSymbolicLink()){problems.push(relative+': unexpected symlink');continue;}
  if(/(?:^|\/)(?:config\.json|\.env|wrangler\.local\.json|runtime\.json)|\.sqlite|\.webm$/.test(relative)){problems.push(relative+': private/generated file');continue;}
  if(!/\.(?:mjs|js|json|md|html|css|yml|py|m|tex|txt)$/.test(file)||relative==='scripts/privacy-audit.mjs'||relative.startsWith('desktop/licenses/'))continue;

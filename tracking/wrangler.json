@@ -1,1 +1,19 @@
-{"name":"spiral-jobs-links","main":"worker.mjs","compatibility_date":"2026-10-01","workers_dev":true,"observability":{"enabled":false},"vars":{"DESTINATION":"https://github.com/edtireli/spiral-jobs"},"kv_namespaces":[{"binding":"LINKS","id":"REPLACE_WITH_YOUR_KV_NAMESPACE_ID"}]}
+{
+  "name": "spiral-jobs-links",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "observability": {
+    "enabled": false
+  },
+  "vars": {
+    "DESTINATION": "https://github.com/edtireli/spiral-jobs"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "LINKS",
+      "id": "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+    }
+  ],
+  "preview_urls": false
+}
