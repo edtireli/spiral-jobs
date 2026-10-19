@@ -1,13 +1,26 @@
 import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
 import path from 'node:path';
 import {mkdir,rm} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
 const dir=path.resolve('docs'),tmp=path.resolve('.cache/demo-recording');await mkdir(tmp,{recursive:true});
-const browser=await chromium.launch({headless:true});const context=await browser.newContext({viewport:{width:1440,height:1000},deviceScaleFactor:1,recordVideo:{dir:tmp,size:{width:1440,height:1000}}});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:4329/');
-await page.waitForTimeout(14300);await page.screenshot({path:path.join(dir,'poster.png')});
-await page.waitForTimeout(8450);await page.screenshot({path:path.resolve('.cache/demo-generation.png')});
-if(!await page.getByText('Document workspace',{exact:true}).isVisible())throw new Error('Generation workspace missing');
-await page.waitForTimeout(25050);await page.screenshot({path:path.resolve('.cache/demo-email.png')});
-if(!await page.getByText('mail.google.com · fictional demo inbox',{exact:true}).isVisible())throw new Error('Email demonstration missing');
-await page.waitForTimeout(11200);if(!await page.getByText('Application received',{exact:true}).isVisible())throw new Error('Demo did not finish');if(errors.length)throw new Error(errors.join(';'));
-const video=page.video();await context.close();const input=await video.path();execFileSync('ffmpeg',['-hide_banner','-loglevel','error','-y','-i',input,'-c:v','libx264','-preset','medium','-crf','20','-pix_fmt','yuv420p','-movflags','+faststart',path.join(dir,'demo.mp4')]);execFileSync('ffmpeg',['-hide_banner','-loglevel','error','-y','-ss','12','-t','20','-i',input,'-vf','fps=9,scale=1000:-1:flags=lanczos','-loop','0',path.join(dir,'preview.gif')]);await browser.close();await rm(tmp,{recursive:true,force:true});console.log('58-second walkthrough verified: CV and facts → LaTeX → PDFs → employer → email verification → receipt.');
+const browser=await chromium.launch({headless:true});const context=await browser.newContext({viewport:{width:1440,height:1000},deviceScaleFactor:1,recordVideo:{dir:tmp,size:{width:1440,height:1000}}});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:4329/');const started=Date.now();
+const at=async ms=>page.waitForTimeout(Math.max(0,ms-(Date.now()-started)));
+const idle=async()=>{assert.equal(await page.locator('#modelSidebar').getAttribute('data-active'),'false');assert.equal(await page.locator('#thought').textContent(),'');};
+// Setup and collecting jobs do not invoke the model.
+await at(6000);await idle();assert.equal(await page.locator('#thoughtHistory p').count(),0);
+await at(14300);await page.screenshot({path:path.join(dir,'poster.png')});
+// The complete plan precedes code generation; compilation is not inference.
+await page.waitForFunction(()=>document.querySelector('#codeStatus').textContent==='planning…');
+assert.equal(await page.locator('#codeOutput').textContent(),'');assert.equal(await page.locator('#modelSidebar').getAttribute('data-active'),'true');
+await page.waitForFunction(()=>document.querySelector('#thought').textContent.includes('Generate editable LaTeX'));
+await page.screenshot({path:path.resolve('.cache/demo-plan.png')});
+await page.waitForFunction(()=>document.querySelector('#codeOutput').textContent.length>80);
+assert.equal(await page.locator('#thinkingTitle').textContent(),'Generating LaTeX');
+assert.match(await page.locator('#thoughtHistory').textContent(),/Generate editable LaTeX, then compile both PDFs\./);
+await page.screenshot({path:path.resolve('.cache/demo-generation.png')});
+await page.waitForFunction(()=>document.querySelector('#codeStatus').textContent==='compiling PDFs…');await idle();
+await at(47800);await page.screenshot({path:path.resolve('.cache/demo-email.png')});
+if(!await page.getByText('mail.google.com · fictional demo inbox',{exact:true}).isVisible())throw new Error('Email demonstration missing');await idle();
+await at(59000);if(!await page.getByText('Application received',{exact:true}).isVisible())throw new Error('Demo did not finish');await idle();if(errors.length)throw new Error(errors.join(';'));
+const video=page.video();await context.close();const input=await video.path();execFileSync('ffmpeg',['-hide_banner','-loglevel','error','-y','-i',input,'-c:v','libx264','-preset','medium','-crf','20','-pix_fmt','yuv420p','-movflags','+faststart',path.join(dir,'demo.mp4')]);execFileSync('ffmpeg',['-hide_banner','-loglevel','error','-y','-ss','12','-t','20','-i',input,'-vf','fps=9,scale=1000:-1:flags=lanczos','-loop','0',path.join(dir,'preview.gif')]);await browser.close();await rm(tmp,{recursive:true,force:true});console.log('Verified: idle setup/search, plan before LaTeX, idle compilation/email, final receipt. Video and previews updated.');
