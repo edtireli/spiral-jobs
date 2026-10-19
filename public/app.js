@@ -97,15 +97,15 @@ function renderLive(el){
  if(['human','paused'].includes(n.status)&&n.phase==='inspect'&&!n.interactiveEnabled){area.innerHTML='<div class="callout">Sign-in and verification can need network requests. Enable this manual step, complete it in Chrome, then resume.</div><button id="allowInteractive">Allow this manual browser step</button>';$('#allowInteractive').onclick=()=>action(`/api/jobs/${j.id}/allow-interactive`,{confirm:true,sequence:n.sequence});}
  if(n.status==='verification')syncVerification();
  if(n.status==='review'&&!automatic)area.innerHTML=`<div class="callout">${j.draft?'Your application is ready for review. Approve & fill application starts filling and uploads.':'Preparing your documents for review.'}</div>`;
- if(n.status==='needs_answer'&&!automatic){
+ if(n.status==='needs_answer'){
   area.innerHTML=`<div class="callout">Your answer is needed.</div>${fieldHTML(n.question,'')}<button id="answerNavigation" class="primary" ${busy?'disabled':''}>approve & continue</button>`;
   $('#answerNavigation').onclick=()=>{const input=area.querySelector('[data-field]');action(`/api/jobs/${j.id}/answer-navigation`,{sequence:n.sequence,confirm:true,value:input.type==='checkbox'?input.checked:input.value});};
  }
- if(n.status==='needs_document'&&!automatic){
+ if(n.status==='needs_document'){
   area.innerHTML='<div class="callout">The application requires a letter. It will be drafted for review before being uploaded.</div><button id="prepareRequiredLetter" class="primary">Prepare required letter</button>';
   $('#prepareRequiredLetter').onclick=()=>action(`/api/jobs/${j.id}/prepare-letter`);
  }
- if(n.status==='document_review'&&!automatic){
+ if(n.status==='document_review'){
   area.innerHTML=`<div class="callout">Review the new letter in the letter tab before approving its upload.</div><a href="${artifact('Application.pdf')}" target="_blank">Review required application PDF ↗</a><p><button id="approveRequiredLetter" class="primary">Approve this letter & continue</button></p>`;
   $('#approveRequiredLetter').onclick=()=>action(`/api/jobs/${j.id}/approve-letter`,{confirm:true,revision:j.revision,reviewHash:j.draft.reviewHash});
  }

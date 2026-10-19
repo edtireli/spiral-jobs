@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validVisionAction,visionChoices} from '../lib/navigator.mjs';
+import {validVisionAction,visionChoices,visionApprovalInstruction} from '../lib/navigator.mjs';
 import {localJSON} from '../lib/ollama-json.mjs';
 const observation={controls:[{target:'0:4',label:'Cover letter',type:'file',isField:true,pending:true},{target:'0:5',label:'Submit application',type:'submit',isField:false},{target:'0:6',label:'Next',type:'button',isField:false}]};
 test('vision must select an observed control of the correct kind before acting',()=>{
@@ -49,4 +49,14 @@ test('default submit type outside a form is a navigation button, not a final con
  assert.equal(validVisionAction({action:'click',target:'0:1',reason:'Continue'},o,'fill'),true);
  assert.equal(validVisionAction({action:'final',target:'0:1',reason:'Submit'},o,'fill'),false);
  assert.ok(choices.some(c=>c.action==='click'&&c.target==='0:1'));assert.ok(!choices.some(c=>c.action==='final'));
+});
+
+test('normal approval and already supplied facts cannot become a model human blocker',async()=>{
+ const complete={controls:[{target:'0:1',isField:true,required:true,filled:true},{target:'0:2',isField:false,type:'submit',label:'Submit application'}]},reason='Human review is necessary before submission.';
+ assert.match(visionApprovalInstruction('full'),/already authorized/);assert.match(visionApprovalInstruction('final'),/obtain final approval/);assert.match(visionApprovalInstruction('review'),/approval before filling/);
+ for(const blocker of [undefined,'approval','missing_information'])assert.equal(validVisionAction({action:'human',target:'',reason,blocker},complete,'fill'),false);
+ for(const blocker of ['login','captcha','consent','unsupported_control','unclear_destination','site_error'])assert.equal(validVisionAction({action:'human',target:'',reason:'Observed blocker',blocker},complete,'fill'),true);
+ const supplied={controls:[{isField:true,required:true,filled:false,approvedAnswer:'Copenhagen'}]};assert.equal(validVisionAction({action:'human',target:'',reason,blocker:'missing_information'},supplied,'fill'),false);
+ let calls=0;const result=await localJSON({messages:[{role:'user',content:visionApprovalInstruction('full')}]},{repairInstruction:visionApprovalInstruction('full'),validate:d=>validVisionAction(d,complete,'fill'),chat:async()=>({message:{content:JSON.stringify(++calls===1?{action:'human',target:'',reason}:{action:'final',target:'0:2',reason:'Form complete'})}})});
+ assert.equal(calls,2);assert.equal(result.action,'final','only a corrected model decision can request the normal final executor checkpoint');
 });

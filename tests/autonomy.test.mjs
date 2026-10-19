@@ -76,11 +76,61 @@ test('stopping during a later document preparation preserves the exposed applica
  assert.equal(f.service.store.get(j.id).navigation.status,'stopped');assert.equal(f.service.autoBatch.running,false);
 });
 
-test('an unknown required fact on a later page stops that application without submitting',async t=>{
+test('an unknown required fact on a later page holds the original browser for a confirmed answer',async t=>{
  const f=await fixture(t,()=>`<form method=post action=/send><section id=one><label>Email<input type=email name=email required></label><label>Resume<input type=file name=cv required></label><button type=button onclick="one.hidden=true;two.hidden=false">Next</button></section><section id=two hidden><label>Work authorisation<input name=permission required></label><button type=submit>Submit application</button></section></form>`);
  const j=f.add('Later Unknown');await f.service.setAutonomy(true);await f.service.autoApply(j.id);await f.service.running;
- assert.equal(f.posts.length,0);assert.equal(f.service.store.get(j.id).stage,'skipped');assert.match(f.service.store.get(j.id).automatic.reason,/Work authorisation/);assert.equal(f.service.store.blocked(j).status,'incomplete');
+ assert.equal(f.posts.length,0);assert.equal(f.service.store.get(j.id).stage,'needs_answer');assert.match(f.service.store.get(j.id).navigation.message,/Work authorisation/);assert.equal(f.service.store.blocked(j).status,'incomplete');assert.equal(f.service.session(j.id).closed,false);
  assert.equal((await f.post(`/api/jobs/${j.id}/auto-apply`)).status,409);
+ const n=f.service.session(j.id);await f.service.answerNavigation(j.id,{confirm:true,sequence:n.state.sequence,value:'Confirmed fixture answer'});await f.service.running;assert.equal(f.posts.length,1);assert.equal(f.service.store.get(j.id).stage,'submitted');
+});
+
+test('exposed human pauses retain one browser and original Full or Final authorization',async t=>{
+ for(const mode of ['full','final'])await t.test(mode,async t=>{
+  const f=await fixture(t,()=>basic),job=f.add('Held Human '+mode),next=f.add('Later Held '+mode,'/later'),create=f.service.createNavigator;let decisions=0,opens=0;
+  f.service.createNavigator=options=>{opens++;const n=create(options),decide=n.decide;n.decide=async args=>{assert.equal(args.approvalMode,mode);if(++decisions<=2)return {action:'human',target:'',blocker:'unsupported_control',reason:'Inspect the browser control.'};return decide(args);};return n;};
+  if(mode==='full')await f.service.setAutonomy(true);await f.service.autoRun({jobIds:[job.id,next.id],mode});await f.service.running;
+  const n=f.service.session(job.id),record=f.service.store.blocked(job),fills=f.service.store.events(job.id).filter(e=>e.action==='field_filled').length;
+  assert.equal(n.state.status,'human');assert.equal(n.exposed,true);assert.equal(n.closed,false);assert.equal(f.posts.length,0);assert.equal(f.service.store.get(next.id).navigation,undefined);
+  await f.service.resumeNavigation(job.id);await f.service.running;assert.equal(n.state.status,'human');assert.equal(n.closed,false);
+  await f.service.resumeNavigation(job.id);await f.service.running;assert.equal(opens,1);assert.equal(f.service.store.blocked(job).id,record.id);assert.equal(f.service.store.events(job.id).filter(e=>e.action==='field_filled').length,fills);
+  if(mode==='final'){assert.equal(f.posts.length,0);assert.equal(n.state.status,'final_review');await f.service.finalNavigation(job.id,{confirm:true,key:n.final.key});await f.service.running;}
+  assert.equal(f.posts.length,1);assert.equal(f.service.store.get(job.id).stage,'submitted');
+ });
+});
+
+test('Stop closes idle automatic human and Final review sessions but leaves manual sessions alone',async t=>{
+ for(const mode of ['full','final'])await t.test(mode,async t=>{
+  const f=await fixture(t,()=>basic),job=f.add('Stop Idle '+mode),create=f.service.createNavigator;
+  if(mode==='full')f.service.createNavigator=options=>{const n=create(options);n.decide=async()=>({action:'human',target:'',blocker:'unsupported_control',reason:'Needs attention'});return n;};
+  if(mode==='full')await f.service.setAutonomy(true);await f.service.autoApply(job.id,mode);await f.service.running;const n=f.service.session(job.id);assert.equal(f.service.autoBatch.running,false);
+  const manual={state:{status:'human'},approvalMode:'review',automatic:false,closed:false};f.service.navigators.set('manual-fixture',manual);
+  await f.service.setAutonomy(false);assert.equal(n.closed,true);assert.equal(manual.closed,false);assert.equal(f.posts.length,0);assert.equal(f.service.store.blocked(job).status,'uncertain');f.service.navigators.delete('manual-fixture');
+ });
+});
+
+test('a pre-exposure login pause resumes the same authorized browser into the normal application',async t=>{
+ const f=await fixture(t,()=>'<label>Password<input type=password></label>'),job=f.add('Inspect Login'),create=f.service.createNavigator;let opens=0;
+ f.service.createNavigator=options=>{opens++;return create(options);};await f.service.setAutonomy(true);await f.service.autoApply(job.id);await f.service.running;
+ const n=f.service.session(job.id);assert.equal(n.state.status,'human');assert.equal(n.exposed,false);assert.equal(f.service.store.blocked(job),null);
+ await n.page.evaluate(html=>document.body.innerHTML=html,basic);await f.service.resumeNavigation(job.id);await f.service.running;
+ assert.equal(opens,1);assert.equal(f.posts.length,1);assert.equal(f.service.store.get(job.id).stage,'submitted');
+});
+
+test('Stop cancels an in-flight Final-origin resume after its automatic flag was cleared',async t=>{
+ const f=await fixture(t,()=>basic),job=f.add('Stop Resumed Final');await f.service.autoApply(job.id,'final');await f.service.running;
+ const n=f.service.session(job.id),decide=n.decide;assert.equal(n.automatic,false);assert.equal(n.state.status,'final_review');let ready,release;
+ const started=new Promise(r=>ready=r),pending=new Promise(r=>release=r);n.decide=async args=>{ready();await pending;return decide(args);};
+ await f.service.resumeNavigation(job.id);await started;assert.equal(n.state.status,'running');await f.service.stopAutonomy();release();await f.service.running;
+ assert.equal(n.closed,true);assert.equal(f.posts.length,0);assert.equal(f.service.store.get(job.id).navigation.status,'stopped');assert.equal(f.service.store.blocked(job).status,'uncertain');
+});
+
+test('CAPTCHA appearing during a held human pause is intercepted before another model decision',{timeout:30000},async t=>{
+ const f=await fixture(t,()=>basic),job=f.add('Held CAPTCHA'),create=f.service.createNavigator;let decisions=0;
+ f.service.createNavigator=options=>{const n=create(options);n.decide=async()=>{decisions++;return {action:'human',target:'',blocker:'unsupported_control',reason:'Inspect this control.'};};return n;};
+ await f.service.setAutonomy(true);await f.service.autoApply(job.id);await f.service.running;const n=f.service.session(job.id),record=n.reservation.id;
+ await n.page.evaluate(()=>{const challenge=document.createElement('p');challenge.textContent='Complete the CAPTCHA before continuing';document.body.append(challenge);});
+ await f.service.resumeNavigation(job.id);await f.service.running;
+ assert.equal(decisions,1);assert.equal(n.state.status,'verification');assert.equal(n.state.verification.kind,'captcha');assert.equal(n.closed,false);assert.equal(n.reservation.id,record);assert.equal(n.finalClicked,false);assert.equal(f.posts.length,0);assert.equal(f.service.autoBatch.running,false);
 });
 
 test('automatic shortlist stays in Denmark and excludes leadership roles',()=>{
@@ -271,6 +321,6 @@ test('a submit button labelled Next cannot be clicked without final review',asyn
  const f=await fixture(t,()=>basic.replace('Submit application','Next')),job=f.add('Mislabelled Submit');
  await f.service.setAutonomy(true);await f.service.autoApply(job.id);await f.service.running;
  assert.equal(f.posts.length,0);assert.equal(f.service.store.blocked(job).status,'incomplete');
- assert.match(f.service.store.get(job.id).automatic.reason,/submit control requires final submission review/);
+ assert.equal(f.service.session(job.id).state.status,'paused');assert.match(f.service.store.get(job.id).navigation.message,/submit control requires final submission review/);
  assert.equal(f.service.store.events(job.id).filter(e=>e.action==='final_submit_started').length,0);
 });
