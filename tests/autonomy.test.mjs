@@ -14,7 +14,7 @@ async function fixture(t,html){
  const dir=await mkdtemp(path.join(os.tmpdir(),'job-desk-auto-')),posts=[];
  const site=http.createServer(async(req,res)=>{let body='';for await(const data of req)body+=data;if(req.method==='POST'){posts.push({url:req.url,body});res.end('Thank you for your application');return;}res.setHeader('Content-Type','text/html');res.end(html(req));});
  await new Promise(r=>site.listen(0,'127.0.0.1',r));const app=await start({port:0,dataDir:dir}),service=app.service;
- t.after(async()=>{await service.stopAutonomy();await service.running;for(const n of service.navigators?.values()||[])await n.close();await new Promise(r=>app.server.close(r));service.store.close();await new Promise(r=>site.close(r));await rm(dir,{recursive:true,force:true});});
+ t.after(async()=>{await service.stopAutonomy();await service.running;for(const n of service.navigators?.values()||[])await n.close();await new Promise(r=>{app.server.close(r);app.server.closeAllConnections();});service.store.close();await new Promise(r=>site.close(r));await rm(dir,{recursive:true,force:true});});
  service.store.set('profile',profile);service.store.set('model','fixture');
  service.proposeFn=async()=>({model:'fixture',fit:'Relevant academic data work',evidenceIds:['python'],coverLetter:'I would like to contribute to practical data work.'});
  service.renderDocumentsFn=async({dir,includeLetter})=>{await mkdir(dir,{recursive:true});const cv=path.join(dir,'CV.pdf'),letter=includeLetter?path.join(dir,'Application.pdf'):null;await writeFile(cv,'%PDF fixture CV');if(letter)await writeFile(letter,'%PDF fixture letter');return {cv,letter,hashes:{cv:hash(await readFile(cv)),letter:letter?hash(await readFile(letter)):null}};};
@@ -210,7 +210,7 @@ test('stop while paused cannot resume or move on to the next employer',async t=>
  assert.notEqual(f.service.store.get(first.id).stage,'submitted');
 });
 
-test('dashboard pause controls the real executor and releases AI ownership after the receipt',async t=>{
+test('dashboard pause controls the real executor and releases AI ownership after the receipt',{timeout:60000},async t=>{
  const f=await fixture(t,()=>basic),j=f.add('Control Preview'),create=f.service.createNavigator;let ready,finish;
  const deciding=new Promise(r=>ready=r),release=new Promise(r=>finish=r);
  f.service.createNavigator=options=>{const n=create(options),decide=n.decide;n.decide=async args=>{ready();await Promise.race([release,new Promise((_,reject)=>args.signal.addEventListener('abort',()=>reject(Error('Stopped')),{once:true}))]);return decide(args);};return n;};
