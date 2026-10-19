@@ -221,3 +221,30 @@ test('final approval mode keeps the first browser open and does not move on to a
  await f.service.autoRun({mode:'final'});await f.service.running;
  assert.equal(f.service.store.get(first.id).navigation.status,'final_review');assert.equal(f.service.store.get(second.id).navigation,undefined);assert.equal(f.posts.length,0);assert.ok(!f.service.session(first.id).closed);
 });
+
+test('invalid vision decisions retain the exposed browser and resume without refilling or changing approval mode',async t=>{
+ for(const mode of ['full','final'])await t.test(mode,async t=>{
+  const f=await fixture(t,()=>basic),first=f.add('Recoverable Vision '+mode),second=f.add('Later Employer '+mode,'/second'),create=f.service.createNavigator;let decisions=0,opens=0;
+  f.service.createNavigator=options=>{opens++;const n=create(options),decide=n.decide;n.decide=async args=>{if(++decisions===1)throw new Error('The local model could not produce a valid result after formatting.');return decide(args);};return n;};
+  if(mode==='full')await f.service.setAutonomy(true);
+  await f.service.autoRun({jobIds:[first.id,second.id],mode});await f.service.running;
+  const original=f.service.session(first.id),record=f.service.store.blocked(first),fills=f.service.store.events(first.id).filter(e=>e.action==='field_filled').length;
+  assert.equal(original.state.status,'paused');assert.equal(original.state.recoverable,'model_decision');assert.equal(original.closed,false);assert.equal(original.exposed,true);assert.equal(original.finalClicked,false);assert.equal(record.status,'incomplete');assert.equal(f.posts.length,0);assert.equal(opens,1);assert.equal(f.service.autoBatch.skipped,0);assert.equal(f.service.store.get(second.id).navigation,undefined);
+  assert.equal((await f.post(`/api/jobs/${first.id}/auto-apply`,{mode})).status,409,'an exposed paused application cannot be replayed');
+  await f.service.resumeNavigation(first.id);await f.service.running;
+  assert.equal(opens,1);assert.equal(f.service.store.blocked(first).id,record.id);assert.equal(f.service.store.events(first.id).filter(e=>e.action==='field_filled').length,fills,'resume does not repeat uploads or completed fields');
+  if(mode==='final'){
+   assert.equal(f.posts.length,0);assert.equal(f.service.session(first.id),original);assert.equal(original.state.status,'final_review');assert.equal(original.automatic,false);
+   await f.service.finalNavigation(first.id,{confirm:true,key:original.final.key});await f.service.running;
+  }
+  assert.equal(f.posts.length,1);assert.equal(f.service.store.get(first.id).stage,'submitted');assert.equal(f.service.store.events(first.id).filter(e=>e.action==='final_submit_started').length,1);
+ });
+});
+
+test('disabling automatic applications stops a browser held after a model failure',async t=>{
+ const f=await fixture(t,()=>basic),job=f.add('Stopped Model Failure'),create=f.service.createNavigator;
+ f.service.createNavigator=options=>{const n=create(options);n.decide=async()=>{throw new Error('No valid decision');};return n;};
+ await f.service.setAutonomy(true);await f.service.autoApply(job.id);await f.service.running;
+ const original=f.service.session(job.id);assert.equal(original.state.recoverable,'model_decision');await f.service.setAutonomy(false);
+ assert.equal(original.closed,true);assert.equal(f.posts.length,0);assert.equal(f.service.store.blocked(job).status,'uncertain');await assert.rejects(async()=>f.service.resumeNavigation(job.id),/no longer open/);
+});
